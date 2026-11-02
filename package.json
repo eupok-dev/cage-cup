@@ -1,0 +1,10 @@
+{
+  "name": "cage-cup",
+  "version": "1.0.0",
+  "description": "Six-a-side cage football in the browser, with shareable two-player games.",
+  "main": "server.js",
+  "scripts": { "start": "node server.js" },
+  "engines": { "node": ">=18" },
+  "license": "UNLICENSED",
+  "private": true
+}
