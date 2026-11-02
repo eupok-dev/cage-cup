@@ -1504,7 +1504,7 @@ function onNet(m){
       renderLobby();break}
     case 'ready':net.peerReady=!!m.v;renderLobby();maybeStart();break;
     case 'start':if(net.role==='guest')beginPvp(m.teams);break;
-    case 's':if(net.role==='guest'&&M&&M.guest&&!M.over)applySnap(m);break;
+    case 's':if(net.role==='guest'&&M&&M.guest&&!M.over)recvSnap(m);break;
     case 'i':if(net.role==='host'&&M&&!M.demo&&!M.over&&mode==='pvp')applyInput(m);break;
     case 'over':if(net.role==='guest'&&M&&M.guest){M.score=m.sc;M.over=true;setTimeout(()=>showResult(m.sc),300)}break;
   }
@@ -1521,7 +1521,7 @@ function beginPvp(teams){
   M=newMatch(teams[0],teams[1],{kits:['barca','madrid'],human:[true,true],local,names:['Barcelona','Real Madrid'],dur:600,countdown:3,
     onEnd:sc=>{nsend(snap());nsend({t:'over',sc});setTimeout(()=>showResult(sc),300)}});
   M.inp[local]=LI;
-  if(local===1)M.guest=true;
+  if(local===1){M.guest=true;G.buf=[];G.hist=[];G.pred=null;G.seq=0}
   net.outbox=[];
   setStage('match');header();
 }
@@ -1535,7 +1535,7 @@ function snap(){
     ctrl:M.ctrl.map(c=>c?c.i:-1),
     play:M.play.map(P=>P?[P.phase,P.passer.i,P.mate.i,P.spot?[r1(P.spot[0]),r1(P.spot[1])]:null,r1(P.window)]:0),
     pcd:M.playCd.map(r1),w:M.warp.map(r1),wcd:M.warpCd.map(r1),dcd:M.diveCd.map(r1),form:M.form,
-    fp:M.formPend.map(f=>f?[f.f,r1(f.t)]:0),pr:M.press.map(p=>p?[p.o.i,r1(p.t)]:0)};
+    fp:M.formPend.map(f=>f?[f.f,r1(f.t)]:0),pr:M.press.map(p=>p?[p.o.i,r1(p.t)]:0),ack:M.inp[1].seq||0};
 }
 function applySnap(s){
   M.ents.forEach((e,i)=>{const a=s.e[i];if(!a)return;[e.x,e.y,e.vx,e.vy,e.fx,e.fy,e.stun,e.slide,e.sdx,e.sdy,e.dive,e.ddx,e.ddy,e.burst,e.stam,e.recover,e.skill]=a});
@@ -1550,23 +1550,79 @@ function applySnap(s){
   M.press=s.pr.map(p=>p?{o:M.ents[p[0]],t:p[1]}:null);
   net.snapAt=performance.now();
 }
+// ---- guest smoothing: interpolate everyone ~100ms behind, predict your own player ----
+const INTERP_MS=100;
+const G={buf:[],seq:0,hist:[],pred:null,corrX:0,corrY:0};
+function recvSnap(s){
+  G.buf.push({at:performance.now(),s});
+  if(G.buf.length>40)G.buf.shift();
+  net.snapAt=performance.now();
+  // reconcile our predicted player against the host's position at the last input it processed
+  const P=G.pred;
+  if(P&&s.ctrl[M.local]===P.i&&s.ack){
+    const h=G.hist.find(q=>q.q===s.ack);
+    if(h){const a=s.e[P.i];G.corrX=a[0]-h.x;G.corrY=a[1]-h.y}
+    G.hist=G.hist.filter(q=>q.q>s.ack);
+  }
+}
+function lerpAngle(ax,ay,bx,by,f){const a=Math.atan2(ay,ax),b=Math.atan2(by,bx);const d=Math.atan2(Math.sin(b-a),Math.cos(b-a));const r=a+d*f;return[Math.cos(r),Math.sin(r)]}
 function guestTick(dt){
-  if(performance.now()-net.snapAt>120||M.freeze>0||M.countdown>0)return;
-  for(const e of M.ents){e.x=clamp(e.x+e.vx*dt,6,W-6);e.y=clamp(e.y+e.vy*dt,6,H-6)}
-  const b=M.ball;
-  if(b.owner){b.x=clamp(b.owner.x+b.owner.fx*10,3,W-3);b.y=clamp(b.owner.y+b.owner.fy*10,3,H-3)}
-  else{b.x+=b.vx*dt;b.y+=b.vy*dt}
-  for(const p of M.pops){p.t-=dt;p.y-=dt*20}
+  if(!G.buf.length)return;
+  const now=performance.now(),rt=now-INTERP_MS;
+  let a=null,b=null;
+  for(let k=G.buf.length-1;k>=0;k--){if(G.buf[k].at<=rt){a=G.buf[k];b=G.buf[k+1]||null;break}}
+  if(!a){a=G.buf[0];b=null}
+  const newest=G.buf[G.buf.length-1].s;
+  applySnap(b?b.s:a.s);
+  // smooth positions between the two snapshots around render time
+  if(b){
+    const f=clamp((rt-a.at)/Math.max(1,b.at-a.at),0,1);
+    M.ents.forEach((e,i)=>{const A=a.s.e[i],B=b.s.e[i];if(!A||!B)return;
+      e.x=A[0]+(B[0]-A[0])*f;e.y=A[1]+(B[1]-A[1])*f;[e.fx,e.fy]=lerpAngle(A[4],A[5],B[4],B[5],f)});
+    const A=a.s.b,B=b.s.b;if(A[4]<0&&B[4]<0){M.ball.x=A[0]+(B[0]-A[0])*f;M.ball.y=A[1]+(B[1]-A[1])*f}
+  }
+  // the newest data decides ownership, control and timers so actions feel immediate
+  M.ctrl=newest.ctrl.map(i=>i>=0?M.ents[i]:null);
+  const L=M.local,c=M.ctrl[L];
+  if(!c||M.freeze>0||M.countdown>0||c.stun>0||c.slide>0||c.dive>0){G.pred=null;G.hist.length=0;return}
+  // predict our own player from local input
+  let P=G.pred;
+  const srv=newest.e[c.i];
+  if(!P||P.i!==c.i){P=G.pred={i:c.i,x:srv[0],y:srv[1],vx:srv[2],vy:srv[3],fx:srv[4],fy:srv[5]};G.hist.length=0;G.corrX=G.corrY=0}
+  const [ix,iy]=inVec(LI),moving=hyp(ix,iy)>0.1;
+  let sp=maxSpd(c);const spr=sprintOf(LI)&&moving&&c.stam>0.02;if(spr)sp*=1.6;
+  let dvx=ix*sp,dvy=iy*sp;
+  const bl=M.ball;
+  if(!moving&&!bl.owner&&bl.target===c){dvx=srv[2];dvy=srv[3]}
+  const k=Math.min(1,9*(spr?1.8:1)*dt);
+  P.vx+=(dvx-P.vx)*k;P.vy+=(dvy-P.vy)*k;
+  P.x=clamp(P.x+P.vx*dt,6,W-6);P.y=clamp(P.y+P.vy*dt,6,H-6);
+  if(c.gk){P.x=L?clamp(P.x,W-120,W-6):clamp(P.x,6,120);P.y=clamp(P.y,110,390)}
+  // bleed in corrections from the host smoothly
+  const take=Math.min(1,dt*8);P.x+=G.corrX*take;P.y+=G.corrY*take;
+  for(const h of G.hist){h.x+=G.corrX*take;h.y+=G.corrY*take}
+  G.corrX*=1-take;G.corrY*=1-take;
+  // snap if we drifted far (e.g. a collision the prediction didn't know about)
+  if(hyp(P.x-srv[0],P.y-srv[1])>60){P.x=srv[0];P.y=srv[1];G.hist.length=0}
+  const v=hyp(P.vx,P.vy);
+  if(LI.over&&v<=15){const dx=LI.mx-P.x,dy=LI.my-P.y,m=hyp(dx,dy);if(m>4){P.fx=dx/m;P.fy=dy/m}}
+  else if(v>15){P.fx=P.vx/v;P.fy=P.vy/v}
+  c.x=P.x;c.y=P.y;c.vx=P.vx;c.vy=P.vy;c.fx=P.fx;c.fy=P.fy;
+  if(bl.owner===c){bl.x=clamp(c.x+c.fx*10,3,W-3);bl.y=clamp(c.y+c.fy*10,3,H-3)}
+  G.pendingHist={x:P.x,y:P.y};
 }
 function applyInput(m){
   const I=M.inp[1];
+  if(m.q)I.seq=m.q;
   I.keys=new Set(m.k||[]);
   const mm=m.m||[];I.mx=mm[0]??I.mx;I.my=mm[1]??I.my;I.over=!!mm[2];I.lmb=!!mm[3];I.rmb=!!mm[4];
   const j=m.j||[];I.jx=j[0]||0;I.jy=j[1]||0;I.js=!!j[2];
   for(const a of (m.a||[]))if(a&&typeof a.a==='string')M.acts[1].push(a);
 }
 function sendInput(){
-  nsend({t:'i',k:[...LI.keys],m:[r1(LI.mx),r1(LI.my),LI.over?1:0,LI.lmb?1:0,LI.rmb?1:0],j:[r1(LI.jx),r1(LI.jy),LI.js?1:0],a:net.outbox.splice(0)});
+  const q=++G.seq;
+  if(G.pendingHist){G.hist.push({q,x:G.pendingHist.x,y:G.pendingHist.y});G.pendingHist=null;if(G.hist.length>240)G.hist.shift()}
+  nsend({t:'i',q,k:[...LI.keys],m:[r1(LI.mx),r1(LI.my),LI.over?1:0,LI.lmb?1:0,LI.rmb?1:0],j:[r1(LI.jx),r1(LI.jy),LI.js?1:0],a:net.outbox.splice(0)});
 }
 
 // ---------- screens ----------

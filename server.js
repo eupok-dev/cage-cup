@@ -12,6 +12,7 @@ const os = require('os');
 const PORT = Number(process.env.PORT) || 8080;
 const GAME = path.join(__dirname, 'cage-cup.html');
 const MAX_ROOMS = 500;
+const SIM_LAG = Number(process.env.SIM_LAG_MS) || 0; // testing: fake one-way network delay
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O or 1/I
 
 let pageCache = null;
@@ -106,7 +107,13 @@ function parse(c) {
     if (op === 8) { c.sock.end(); return; }
     if (op === 9) { sendFrame(c, payload, 10); continue; }
     if (op === 10) continue; // pong
-    if (op === 1) { const peer = other(c); if (peer) sendFrame(peer, payload); }
+    if (op === 1) {
+      const peer = other(c);
+      if (peer) {
+        if (SIM_LAG) setTimeout(() => sendFrame(peer, payload), SIM_LAG + Math.random() * SIM_LAG * 0.5); // testing only
+        else sendFrame(peer, payload);
+      }
+    }
   }
 }
 
