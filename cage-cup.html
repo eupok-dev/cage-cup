@@ -623,7 +623,7 @@ function slideContact(e){
   const b=M.ball,o=b.owner;
   if(o&&o.team!==e.team&&!o.gk&&hyp(b.x-e.x,b.y-e.y)<18){
     e.slideHit=true;
-    if(!canTackle(e,o,e.sdx,e.sdy)){pop(e.x,e.y-18,'FROM BEHIND','#e5484d');return}
+    if(!canTackle(e,o,e.sdx,e.sdy)&&hyp(o.vx,o.vy)>=35){pop(e.x,e.y-18,'FROM BEHIND','#e5484d');return}
     if(Math.random()<0.7+stat(e,'tack')*0.025){
       b.owner=null;b.vx=e.sdx*240+o.vx*0.3;b.vy=e.sdy*240+o.vy*0.3;b.kind=null;b.rolled=new Set();b.target=null;b.loft=0;b.lastTeam=e.team;
       o.stun=0.6;o.pickCd=0.5;pop(e.x,e.y-18,'SLIDE!','#4cc38a');
@@ -893,7 +893,7 @@ function controlTeam(T,dt){
     const P=M.play[T];
     if(P&&P.phase==='ready'&&a==='pass'&&b.owner===c){P.phase='run';P.t=0;playPass(c,P.mate);continue}
     if(P&&P.phase==='run')continue;
-    if(a==='slide'){if(b.owner!==c&&c.slideCd<=0&&c.stun<=0&&!c.gk)startSlide(c,ix,iy);continue}
+    if(a==='slide'){if(b.owner!==c&&c.slideCd<=0&&c.stun<=0&&!c.gk){const[sx,sy]=aimDir(c,ix,iy,I);startSlide(c,sx,sy)}continue}
     if(a==='skill'){if(b.owner===c)skillMove(c,ix,iy);continue}
     if(a==='mshot'){if(b.owner===c)shootAt(c,act.x,act.y,act.p,mod);continue}
     if(a==='shoot'){if(b.owner===c){if(I.over)shootAt(c,I.mx,I.my,0.8,mod);else shoot(c,iy>0.3?1:iy<-0.3?-1:0)}continue}
@@ -904,17 +904,24 @@ function controlTeam(T,dt){
       continue;
     }
     if(a==='tackle'&&b.owner!==c&&c.lunge<=0&&c.stun<=0){
-      c.lunge=0.9;
+      c.lunge=0.6;
       const o=b.owner;
       const tx=o&&o.team===O?o.x:b.x,ty=o&&o.team===O?o.y:b.y;
-      const d=hyp(tx-c.x,ty-c.y)||1;
-      const ok=o&&o.team===O&&d<34&&!o.gk?canTackle(c,o):null;
-      c.vx=(tx-c.x)/d*maxSpd(c)*1.9;c.vy=(ty-c.y)/d*maxSpd(c)*1.9;
-      if(ok===false){c.stun=0.6;pop(c.x,c.y-18,'FROM BEHIND','#e5484d')}
-      else if(ok){
-        let p=0.32+stat(c,'tack')*0.05;
-        if(Math.random()<p){o.stun=0.6;take(c)}else c.stun=0.55;
-      }
+      const d=hyp(tx-c.x,ty-c.y)||1,ux=(tx-c.x)/d,uy=(ty-c.y)/d;
+      const facing=c.fx*ux+c.fy*uy>0.3;   // must be facing the ball
+      c.vx=ux*maxSpd(c)*1.9;c.vy=uy*maxSpd(c)*1.9;c.fx=ux;c.fy=uy;
+      if(o&&o.team===O&&!o.gk&&d<42){
+        const still=hyp(o.vx,o.vy)<35;                // a carrier standing still can be robbed from any side
+        const front=o.fx*-ux+o.fy*-uy>0;
+        if(!facing){c.stun=0.3;pop(c.x,c.y-18,'FACE THE BALL','#ffb627')}
+        else if(!front&&!still){c.stun=0.6;pop(c.x,c.y-18,'FROM BEHIND','#e5484d')}
+        else{
+          let p=still?0.95:0.6+stat(c,'tack')*0.03;
+          if(o.skill>0)p*=0.4;
+          if(Math.random()<p){o.stun=0.6;take(c);pop(c.x,c.y-18,'TACKLE!','#4cc38a')}
+          else{c.stun=0.45;pop(c.x,c.y-18,'MISSED','#ffb627')}
+        }
+      }else if(!o&&d<34&&facing&&c.pickCd<=0)take(c);
     }
   }
 }
