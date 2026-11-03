@@ -71,6 +71,28 @@ const server = http.createServer((req, res) => {
     try { res.writeHead(200, { 'Content-Type': 'text/plain', 'Cache-Control': 'no-store' }); res.end(gameVersion()); } catch (e) { res.writeHead(500); res.end(); }
     return;
   }
+  if ((req.method === 'GET' || req.method === 'HEAD') && url.split('?')[0] === '/menu-music.mp3') {
+    // phones need byte-range support to stream audio
+    const f = path.join(__dirname, 'menu-music.mp3');
+    fs.stat(f, (err, st) => {
+      if (err) { res.writeHead(404); res.end(); return; }
+      const base = { 'Content-Type': 'audio/mpeg', 'Accept-Ranges': 'bytes', 'Cache-Control': 'max-age=86400' };
+      const m = /bytes=(\d*)-(\d*)/.exec(req.headers.range || '');
+      if (m) {
+        let s = m[1] ? +m[1] : st.size - +m[2], e = m[1] && m[2] ? +m[2] : st.size - 1;
+        s = Math.max(0, s); e = Math.min(e, st.size - 1);
+        if (s > e) { res.writeHead(416, { 'Content-Range': `bytes */${st.size}` }); res.end(); return; }
+        res.writeHead(206, { ...base, 'Content-Range': `bytes ${s}-${e}/${st.size}`, 'Content-Length': e - s + 1 });
+        if (req.method === 'HEAD') return res.end();
+        fs.createReadStream(f, { start: s, end: e }).pipe(res);
+      } else {
+        res.writeHead(200, { ...base, 'Content-Length': st.size });
+        if (req.method === 'HEAD') return res.end();
+        fs.createReadStream(f).pipe(res);
+      }
+    });
+    return;
+  }
   if (req.method === 'GET' && url === '/manifest.webmanifest') { res.writeHead(200, { 'Content-Type': 'application/manifest+json' }); res.end(MANIFEST); return; }
   const ic = req.method === 'GET' && /^\/icon-(180|192|512)\.png$/.exec(url);
   if (ic) {

@@ -120,6 +120,7 @@ body.dev .devtag{display:inline-block}
 /* campaign on small screens */
 .lbtns{display:flex;gap:6px;align-items:center;margin-left:auto;flex:none}
 .sslot .ccard{min-height:0;flex:1}
+.cgrid>.ccard{min-height:auto} /* % min-height inside an auto grid row made cards spill into the next row */
 .ccard.empty{min-height:110px}
 .squadrow.t .ccard.empty{min-height:90px;max-height:130px}
 @media (max-width:700px){
@@ -2362,6 +2363,7 @@ $('#cutBox').hidden=s!=='cut';if(s!=='match')$('#testSkip').hidden=true;if(s==='
   if(typeof MOB!=='undefined'){mobSetPlay(MOB&&(s==='match'||s==='cut'));document.body.classList.toggle('cutting',s==='cut');document.body.classList.toggle('tutm',mode==='tut')}
   requestAnimationFrame(resize);
   header();
+  if(typeof musicUpdate==='function')try{musicUpdate()}catch(e){}
 }
 function header(){
   const c=$('#chips');
@@ -3364,14 +3366,34 @@ cv.addEventListener('click',()=>{if(stage==='cut')cutNext()});
 const SND={ac:null,master:null,on:true,amb:null,ambKey:'',noise:null};
 try{SND.on=localStorage.getItem('cagecup.sound')!=='off'}catch(e){}
 function sndInit(){
-  if(SND.ac){if(SND.ac.state==='suspended')SND.ac.resume().catch(()=>{});return}
+  // iPhone: play through the silent switch where Safari allows it
+  try{if(navigator.audioSession&&navigator.audioSession.type!=='playback')navigator.audioSession.type='playback'}catch(e){}
+  if(SND.ac){if(SND.ac.state!=='running')SND.ac.resume().catch(()=>{});musicUpdate();return}
   const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;
   const ac=SND.ac=new AC();SND.master=ac.createGain();SND.master.gain.value=SND.on?0.7:0;
   const comp=ac.createDynamicsCompressor();SND.master.connect(comp);comp.connect(ac.destination);
   const len=ac.sampleRate*2,buf=ac.createBuffer(1,len,ac.sampleRate),d=buf.getChannelData(0);for(let i=0;i<len;i++)d[i]=Math.random()*2-1;SND.noise=buf;
+  // a silent blip inside the first tap unlocks audio on iPhone
+  try{const s=ac.createBufferSource();s.buffer=ac.createBuffer(1,1,22050);s.connect(ac.destination);s.start(0)}catch(e){}
+  if(ac.state!=='running')ac.resume().catch(()=>{});
+  musicUpdate();
 }
-['pointerdown','keydown','touchstart'].forEach(t=>window.addEventListener(t,sndInit,{capture:true,passive:true}));
-function sndSet(on){SND.on=on;try{localStorage.setItem('cagecup.sound',on?'on':'off')}catch(e){}if(SND.master)SND.master.gain.setTargetAtTime(on?0.7:0,SND.ac.currentTime,0.05);
+['pointerdown','touchstart','touchend','click','keydown'].forEach(t=>window.addEventListener(t,sndInit,{capture:true,passive:true}));
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&SND.ac&&SND.ac.state!=='running')SND.ac.resume().catch(()=>{});if(document.visibilityState==='hidden'&&BGM.el)BGM.el.pause();else musicUpdate()});
+// menu music: the song loops on the menu, campaign, lobby and result screens; it fades out for matches and story scenes
+const MUSIC_STAGES=['menu','career','lobby','result'],BGM={el:null,g:null,t:0};
+function musicEl(){
+  if(BGM.el)return BGM.el;const a=new Audio('menu-music.mp3');a.loop=true;a.preload='auto';a.setAttribute('playsinline','');BGM.el=a;
+  try{const src=SND.ac.createMediaElementSource(a);BGM.g=SND.ac.createGain();BGM.g.gain.value=0.0001;src.connect(BGM.g);BGM.g.connect(SND.master)}catch(e){a.volume=0.35}
+  return a;
+}
+function musicUpdate(){
+  if(!SND.ac)return;const a=musicEl(),want=SND.on&&MUSIC_STAGES.includes(stage)&&document.visibilityState!=='hidden',t=SND.ac.currentTime;
+  clearTimeout(BGM.t);
+  if(want){if(a.paused)a.play().catch(()=>{});if(BGM.g)BGM.g.gain.setTargetAtTime(0.3,t,0.5)}
+  else{if(BGM.g)BGM.g.gain.setTargetAtTime(0.0001,t,0.25);BGM.t=setTimeout(()=>{if(!(SND.on&&MUSIC_STAGES.includes(stage)))a.pause()},1000)}
+}
+function sndSet(on){SND.on=on;setTimeout(()=>{try{musicUpdate()}catch(e){}},0);try{localStorage.setItem('cagecup.sound',on?'on':'off')}catch(e){}if(SND.master)SND.master.gain.setTargetAtTime(on?0.7:0,SND.ac.currentTime,0.05);
   document.querySelectorAll('.sndbtn').forEach(b=>{b.textContent=on?'🔊':'🔇';b.setAttribute('aria-label',on?'Sound on':'Sound off');b.title=on?'Mute':'Unmute'})}
 const live_=()=>SND.ac&&SND.on&&SND.ac.state==='running';
 // building blocks
