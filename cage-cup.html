@@ -231,6 +231,18 @@ details.hint summary{cursor:pointer;font-family:var(--display);font-weight:800;f
 .roomcode{font-family:var(--display);font-size:18px;letter-spacing:.12em;color:var(--chalk)}
 .codein{font-family:var(--display);font-weight:800;font-size:20px;letter-spacing:.14em;text-transform:uppercase;width:7ch;background:var(--panel2);color:var(--chalk);border:1px solid var(--line);border-radius:6px;padding:6px 8px}
 .codein:focus-visible{outline:2px solid var(--kit)}
+.tut{width:100%;display:flex;flex-direction:column;gap:8px;background:var(--panel);border:2px solid var(--kit);border-radius:12px;padding:12px 14px}
+.tutTop{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.tutDots{display:flex;gap:5px}
+.tutDots i{width:9px;height:9px;border-radius:50%;background:var(--panel2);border:1px solid var(--line)}
+.tutDots i.on{background:var(--kit);border-color:var(--kit)} .tutDots i.done{background:var(--good);border-color:var(--good)}
+.tutMain{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.tutMain h3{font-size:26px;color:var(--kit)}
+.tutMain p{margin-top:4px;max-width:70ch}
+.tutMain kbd{font-family:var(--body);font-weight:700;color:var(--chalk);background:var(--panel2);border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 5px;font-size:13px}
+.tutDone{font-family:var(--display);font-weight:900;font-size:34px;color:var(--good);text-transform:uppercase;flex:none}
+.tutProg{height:6px;background:var(--panel2);border-radius:3px;overflow:hidden}
+.tutProg i{display:block;height:100%;width:0;background:var(--good);transition:width .15s}
 .tm .you{font-family:var(--body);font-size:12px;font-weight:700;letter-spacing:.1em;color:var(--chalk);margin-left:6px;vertical-align:middle}
 </style>
 
@@ -246,6 +258,12 @@ details.hint summary{cursor:pointer;font-family:var(--display);font-weight:800;f
       <div class="mid"><div class="goals" id="sGoals">0 – 0</div><div class="clock" id="sClock">0'</div></div>
       <div class="tm away" id="sAway">Red</div>
     </div>
+    <div class="tut" id="tut" hidden>
+      <div class="tutTop"><span class="label" id="tutStep">Step 1 of 9</span><div class="tutDots" id="tutDots"></div></div>
+      <div class="tutMain"><div><h3 id="tutTitle">Move</h3><p id="tutText"></p></div><div class="tutDone" id="tutDone" hidden>Nice!</div></div>
+      <div class="tutProg"><i id="tutBar"></i></div>
+      <div class="row"><button class="btn small" id="tutNext" hidden>Continue</button><button class="btn ghost small" id="tutSkip">Skip step</button><button class="btn ghost small" id="tutRetry">Reset step</button><button class="btn ghost small" id="tutExit">Exit tutorial</button></div>
+    </div>
     <div class="pcards" id="pcards" hidden><div class="pc" id="pcMe"></div><div class="pc them" id="pcThem" hidden></div></div>
     <div class="pitchbox" id="pitchbox">
       <canvas id="pitch" width="860" height="540" aria-label="Match pitch"></canvas>
@@ -253,7 +271,7 @@ details.hint summary{cursor:pointer;font-family:var(--display);font-weight:800;f
         <section class="panel" id="menuPanel">
           <h1>Cage<b>Cup</b></h1>
           <p id="menuSub">Six-a-side cage football. Pick an opponent.</p>
-          <div class="modes" id="modeRow"><button class="btn big" id="vsAiBtn">Play vs AI</button><button class="btn big ghost" id="vsPersonBtn">Play vs Person</button></div>
+          <div class="modes" id="modeRow"><button class="btn big" id="vsAiBtn">Play vs AI</button><button class="btn big ghost" id="vsPersonBtn">Play vs Person</button><button class="btn big ghost" id="tutBtn">Tutorial</button></div>
           <div class="diffs" id="diffRow" hidden>
             <span class="label pickl">Your team</span>
             <button class="tbtn2" data-t="barca"><span class="tdot" style="background:#a50044;box-shadow:inset 0 -6px 0 #1f4fa3"></span><span class="dn">Barcelona 2011</span><span class="dd">Messi, Xavi, Iniesta. Opponent: Real Madrid 2017</span></button>
@@ -319,7 +337,6 @@ details.hint summary{cursor:pointer;font-family:var(--display);font-weight:800;f
         <div class="kgroup att"><h4>Attack</h4>
           <div class="krow"><span class="k"><kbd>Space</kbd></span><span>Pass toward cursor</span></div>
           <div class="krow"><span class="k">hold <kbd>Left-click</kbd></span><span>Charge shot, release to shoot</span></div>
-          <div class="krow"><span class="k"><kbd>K</kbd></span><span>Quick shot</span></div>
           <div class="krow"><span class="k"><kbd>Q</kbd></span><span>Set play near goal</span></div>
         </div>
         <div class="kgroup def"><h4>Defend</h4>
@@ -411,8 +428,8 @@ const DIVE_CD=5,DIVE_RANGE=200,WARP_DUR=4,WARP_CD=20,WARP_R=110;
 const PLAY_CD=5,AI_PLAY_CD=12,PLAY_WINDOW=2.5,PLAY_SEARCH=3.5,PASS_TOL=0.21;
 const DIFFS={
   easy:{off:-2,n:'Easy',d:'Slower, sloppier opponents. No special abilities.',lvl:3.6,tack:0.5,chase:0.72,shotErr:1.8,shootP:0.35,plays:false,warp:false,dive:false,playCd:999,dSpread:0.42,diveChance:0,diveCd:10},
-  normal:{off:-1,n:'Default',d:'A fair match. Abilities used now and then.',lvl:4.2,tack:0.7,chase:0.8,shotErr:1.35,shootP:0.42,plays:true,warp:true,dive:true,playCd:22,dSpread:0.4,diveChance:0.4,diveCd:10},
-  pro:{off:0,n:'Pro',d:'Sharp, aggressive, uses every ability.',lvl:5,tack:1,chase:0.88,shotErr:1,shootP:0.55,plays:true,warp:true,dive:true,playCd:12,dSpread:0.34,diveChance:0.6,diveCd:8},
+  normal:{off:-1,n:'Default',d:'A fair match. Abilities used now and then.',lvl:4.2,tack:0.85,chase:0.8,shotErr:1.35,shootP:0.42,plays:true,warp:true,dive:true,playCd:22,dSpread:0.4,diveChance:0.4,diveCd:10},
+  pro:{off:0,n:'Pro',d:'Sharp, aggressive, uses every ability.',lvl:5,tack:1.15,chase:0.88,shotErr:1,shootP:0.55,plays:true,warp:true,dive:true,playCd:12,dSpread:0.34,diveChance:0.6,diveCd:8},
 };
 const ownGoalX=t=>t?W:0,oppGoalX=t=>t?0:W,dirOf=t=>t?-1:1;
 const TEAMCOL=['#ffb627','#e5484d'];
@@ -466,7 +483,7 @@ function stat(e,k){return e.p[k]}
 function maxSpd(e){
   let s=72+stat(e,'pace')*11;
   s*=0.78+0.22*(e.p.energy/100);
-  if(M.ball.owner===e)s*=0.9;
+  if(M.ball.owner===e)s*=0.84;
   if(e.burst>0)s*=1.3;
   if(e.skill>0)s*=1.25;
   if(e.recover>0)s*=0.3;
@@ -479,7 +496,7 @@ function pop(x,y,txt,col='#eef1e8'){M.pops.push({x,y,txt,col,t:0.9})}
 function take(e){
   const b=M.ball;
   b.owner=e;b.kind=null;b.vx=b.vy=0;b.rolled=new Set();b.lastTeam=e.team;b.target=null;b.loft=0;b.power=false;
-  e.immune=isHuman(e.team)?(isHuman(1-e.team)?0.7:0.9):0.45;
+  e.immune=isHuman(e.team)?0.5:0.4;
   if(e.gk){e.hold=isHuman(e.team)?4:0.8;if(e.dive>0){e.dive=0;e.stun=0.15}e.fx=dirOf(e.team);e.fy=0}
   if(isHuman(e.team))M.ctrl[e.team]=e;
 }
@@ -792,6 +809,15 @@ function aiTarget(e,dt){
     if(!o&&dB<60&&hyp(b.x-e.x,b.y-e.y)<70&&hyp(b.vx,b.vy)<200)return steer(e,b.x,b.y);
     return steer(e,tx,ty);
   }
+  if(M.tut&&T===0){ // tutorial: teammates only help when the lesson needs them
+    const P=M.play[0];
+    if(P&&P.phase!=='run'&&e===P.mate&&P.spot)return steer(e,P.spot[0],P.spot[1],1.75);
+    if(!o&&b.target===e&&b.kind==='pass'){const[rx,ry]=receiveTarget(e);return steer(e,rx,ry)}
+    if(!o&&b.target===e&&b.kind==='through')return steer(e,b.tpt[0],b.tpt[1],1.25);
+    if(M.warp[0]>0&&o&&o.team===1&&e===nearestTo(0,b.x,b.y,M.ctrl[0]))return steer(e,b.x,b.y,1.45);
+    return[0,0];
+  }
+  if(M.tut&&T===1)return e.tutTo?steer(e,e.tutTo[0],e.tutTo[1],e.tutTo[2]||0.5):[0,0]; // tutorial: opponents only do what the lesson scripts
   for(const P of M.play)if(P&&P.phase!=='run'&&e===P.mate&&P.spot)return steer(e,P.spot[0],P.spot[1],1.75);
   if(!o&&b.target===e&&b.kind==='pass'){const[rx,ry]=receiveTarget(e);return steer(e,rx,ry)}
   if(!o&&b.target===e&&b.kind==='through')return steer(e,b.tpt[0],b.tpt[1],1.25);
@@ -830,7 +856,20 @@ function aiTarget(e,dt){
   // when a human's own player is already on the ball, AI teammates hold shape instead of piling in
   const hc=isHuman(T)?M.ctrl[T]:null,humanOnIt=!!(hc&&!hc.gk&&hyp(hc.x-b.x,hc.y-b.y)<170);
   const ch=humanOnIt?null:nearestTo(T,px,py,hc);
-  if(e===ch)return steer(e,px,py,!isHuman(T)&&isHuman(O)?M.diff.chase:1);
+  const pm=(!isHuman(T)&&isHuman(O)?M.diff.chase:1)*(o&&o.team===O?1.35:1);
+  if(e===ch)return steer(e,px,py,pm);
+  // second presser: double-team a carrier near our goal (or help a human who is already pressing)
+  if(o&&o.team!==T&&!e.gk){
+    const danger=Math.abs(o.x-ownGoalX(T))<340;
+    if(danger||humanOnIt){
+      const helper=nearestTo(T,o.x,o.y,ch||hc);
+      if(e===helper&&hyp(e.x-o.x,e.y-o.y)<260){
+        const gx=ownGoalX(T),gy=H/2,gd=hyp(gx-o.x,gy-o.y)||1;
+        // cut in from the goal side so the carrier runs into the second man
+        return steer(e,o.x+(gx-o.x)/gd*26,o.y+(gy-o.y)/gd*26,pm);
+      }
+    }
+  }
   if(!o){
     const own=T?b.x>W/2:b.x<W/2;
     if(own&&!humanOnIt&&hyp(e.x-b.x,e.y-b.y)<110)return steer(e,px,py);
@@ -980,7 +1019,7 @@ function update(dt){
       const [ix,iy]=inVec(I);const moving=hyp(ix,iy)>0.1;
       let s=maxSpd(e);
       const st=e.p.stam||5;
-      if(sprintOf(I)&&moving&&e.stam>0.02){s*=1.6;e.stam=Math.max(0,e.stam-dt*0.3*(1.45-st*0.07))}
+      if(sprintOf(I)&&moving&&e.stam>0.02){s*=b.owner===e?1.25:1.6;e.stam=Math.max(0,e.stam-dt*0.3*(1.45-st*0.07))}
       else e.stam=Math.min(1,e.stam+dt*0.2*(0.6+st*0.06));
       if(!moving&&!b.owner&&b.target===e&&b.kind==='pass'){[dvx,dvy]=steer(e,...receiveTarget(e))}
       else if(!moving&&!b.owner&&b.target===e&&b.kind==='through'){[dvx,dvy]=steer(e,b.tpt[0],b.tpt[1],1.25)}
@@ -1010,11 +1049,15 @@ function update(dt){
     if(o.immune<=0&&!o.gk){
       for(const e of es){
         if(e.team===o.team||e.gk||e.stun>0)continue;
-        if(hyp(e.x-o.x,e.y-o.y)>16)continue;
-        if(e.slide>0||!canTackle(e,o))continue;
-        if(isCtrl(e))continue;
-        let r=1.4*stat(e,'tack')/10;
-        if(isHuman(o.team)&&!isHuman(e.team))r*=0.45*M.diff.tack;
+        if(hyp(e.x-o.x,e.y-o.y)>24)continue;
+        if(e.slide>0)continue;
+        let back=1;
+        {const dx=o.x-e.x,dy=o.y-e.y,d=hyp(dx,dy)||1;
+         if((e.fx*dx+e.fy*dy)/d<0.2)continue;
+         if((o.fx*-dx+o.fy*-dy)/d<-0.5)back=0.55}
+        if(isCtrl(e)||(M.tut&&e.team===1))continue;
+        let r=3.8*(0.4+stat(e,'tack')*0.06)*back;
+        if(isHuman(o.team))r*=isHuman(e.team)?0.8:M.diff.tack;
         if(Math.random()<r*dt){o.stun=0.35;take(e);break}
       }
     }
@@ -1030,7 +1073,7 @@ function update(dt){
         const turn=Math.abs(Math.atan2(Math.sin(a-pr.ang),Math.cos(a-pr.ang)));
         if(turn>0.7||o.skill>0){M.press[T]=null;pop(o.x,o.y-18,'TURNED','#e5484d')}
         else{
-          pr.t+=dt*(0.7+stat(c,'tack')*0.06);
+          pr.t+=dt*(1.0+stat(c,'tack')*0.08);
           if(pr.t>=1){M.press[T]=null;o.stun=0.4;take(c);pop(c.x,c.y-18,'WON IT','#4cc38a');break}
         }
       }else if(M.press[T]){M.press[T].t-=dt*1.5;if(M.press[T].t<=0||d>40)M.press[T]=null}
@@ -1373,7 +1416,7 @@ function cardHTML(e,kit,mine){
 let pcKey='';
 function playerCards(){
   const box=$('#pcards');
-  if(!M||M.demo||stage!=='match'){if(pcKey!=='none'){box.hidden=true;pcKey='none'}return}
+  if(!M||M.demo||stage!=='match'||mode==='tut'){if(pcKey!=='none'){box.hidden=true;pcKey='none'}return}
   const L=M.local,me=M.human[L]?M.ctrl[L]:null,them=M.human[1-L]?M.ctrl[1-L]:null;
   const key=(me?me.i:-1)+'|'+(them?them.i:-1)+'|'+M.form.join();
   if(key!==pcKey){
@@ -1423,18 +1466,18 @@ function ctrlHud(){
 }
 
 // ---------- input wiring ----------
-const CAPTURE=['n','arrowup','arrowdown','arrowleft','arrowright',' ','w','a','s','d','j','k','l','q','e','r','f','1','2','3','shift'];
+const CAPTURE=['n','arrowup','arrowdown','arrowleft','arrowright',' ','w','a','s','d','j','l','q','e','r','f','1','2','3','shift'];
 let endMode=null;
 window.addEventListener('keydown',e=>{
   const k=e.key.toLowerCase();
   if(!live())return;
-  if(k==='escape'){endMode?hideEnd():askEnd('match');return}
+  if(mode==='tut'&&T_.done&&k==='enter'){e.preventDefault();$('#tutNext').click();return}
+  if(k==='escape'){if(mode==='tut')return;endMode?hideEnd():askEnd('match');return}
   if(endMode&&k==='enter'){e.preventDefault();$('#endYes').click();return}
   if(CAPTURE.includes(k))e.preventDefault();
   if(e.repeat)return;
   LI.keys.add(k);
   if(k==='j'||k===' ')act({a:'pass',mod:LI.rmb});
-  if(k==='k')act({a:'shoot',mod:LI.rmb});
   if(k==='e')act({a:LI.keys.has('shift')?'slide':'tackle'});
   if(k==='shift'&&LI.rmb)act({a:'skill'});
   if(k==='q')act({a:'play'});
@@ -1713,6 +1756,7 @@ function setStage(s){
 function header(){
   const c=$('#chips');
   if(mode==='ai')c.innerHTML=`<span class="chip"><span class="label">Mode</span><strong>vs AI</strong></span><span class="chip"><span class="label">Difficulty</span><strong>${DIFFS[aiDiff].n}</strong></span>`;
+  else if(mode==='tut')c.innerHTML='<span class="chip"><span class="label">Mode</span><strong>Tutorial</strong></span>';
   else if(mode==='pvp')c.innerHTML=`<span class="chip"><span class="label">Mode</span><strong>vs Person</strong></span>${net.role==='host'||net.role==='guest'?`<span class="chip"><span class="label">You are</span><strong style="color:${net.role==='host'?'#ff5d93':'#f2f2f2'}">${net.role==='host'?'Barcelona':'Real Madrid'}</strong></span>`:''}`;
   else c.innerHTML='';
 }
@@ -1720,6 +1764,7 @@ function startDemo(){
   M=newMatch(makeTeam(6),makeTeam(6),{demo:true,dur:1e9,names:['Cage FC','Dockside Rovers'],onEnd:startDemo});
 }
 function toMenu(){
+  $('#tut').hidden=true;
   showDiff(false);setUrlRoom('');net.room='';net.link='';net.status='';
   if(net.ws){const w=net.ws;net.ws=null;w.close()}
   net.role=null;net.peer=false;net.myReady=net.peerReady=false;
@@ -1828,6 +1873,90 @@ $('#diffBack').onclick=()=>showDiff(false);
 $('#vsAiBtn').onclick=()=>showDiff(true);
 $('#vsPersonBtn').onclick=()=>openLobby();
 
+// ---------- tutorial ----------
+const K=k=>`<kbd>${k}</kbd>`;
+const TUT=[
+  {t:'Move',d:()=>`Use ${K('W')}${K('A')}${K('S')}${K('D')} to run around. The player with the white ring and arrow is yours.`,
+   set(){tutLayout();tutMe(300,250)},
+   tick(){const c=M.ctrl[0];if(!c)return 0;const p=T_.p||(T_.p=[c.x,c.y]);T_.dist=(T_.dist||0)+hyp(c.x-p[0],c.y-p[1]);T_.p=[c.x,c.y];return T_.dist/250}},
+  {t:'Sprint',d:()=>`Hold ${K('Shift')} while moving to sprint. The bar under your player is stamina. It drains while you sprint and refills when you stop.`,
+   set(){tutLayout();tutMe(200,250)},
+   tick(){const c=M.ctrl[0];return c?(1-c.stam)/0.3:0}},
+  {t:'Aim with the mouse',d:()=>`Move your mouse over the pitch. When you stand still your player turns to face the cursor, and every pass and shot aims at it. Sweep the cursor around your player.`,
+   set(){tutLayout();tutMe(400,250)},
+   tick(){const c=M.ctrl[0];if(!c||!LI.over)return T_.turn/6.28||0;const a=Math.atan2(c.fy,c.fx);if(T_.a!==undefined){let d=Math.abs(a-T_.a);d=Math.min(d,6.283-d);if(d<1)T_.turn=(T_.turn||0)+d}T_.a=a;return (T_.turn||0)/6.28}},
+  {t:'Pass',d:()=>`Point the cursor at a teammate and press ${K('Space')}. A green dashed ring on him means the pass is clean. Yellow or red means you're aiming off.`,
+   set(){tutLayout();const me=tutMe(300,250);tutGive(me);tutMate(1,430,170);tutMate(2,430,330)},
+   tick(){const o=M.ball.owner;if(o&&o.team===0&&o!==T_.giver&&!o.gk)return 1;if(o&&o.team===1)tutReset();return 0}},
+  {t:'Shoot',d:()=>`Hold ${K('Left-click')} to charge, then release to shoot at the cursor. Don't hold it into the red zone or you'll overhit. Score a goal.`,
+   set(){tutLayout();const me=tutMe(560,250);tutGive(me);keeper(1).p.hands=2},
+   tick(){if(M.score[0]>T_.s0)return 1;const b=M.ball;if(!b.owner&&hyp(b.vx,b.vy)<20&&b.lastTeam===0&&!T_.wait){T_.wait=setTimeout(()=>{T_.wait=0;if(T_.step===TUT_I)tutReset()},900)}if(b.owner&&b.owner.team===1)tutReset();return 0}},
+  {t:'Tackle',d:()=>`The red player has the ball. Face him (move toward him, or point the cursor at the ball) and press ${K('E')} to tackle. ${K('Shift')}+${K('E')} is a slide tackle toward the cursor. Tackles only work from in front unless he's standing still.`,
+   set(){tutLayout();tutMe(350,250);const o=tutOpp(3,420,250);o.fx=-1;o.fy=0;take(o);o.think=999},
+   tick(){const o=M.ball.owner;return o&&o.team===0?1:0}},
+  {t:'Set play',d:()=>`Near the opponent's goal with the ball, press ${K('Q')}. A teammate runs into space. When his blue ring pulses, press ${K('Space')} and he fires a power shot first time.`,
+   set(){tutLayout();const me=tutMe(560,190);tutGive(me);tutMate(1,520,330);tutMate(2,470,260);M.playCd[0]=0},
+   tick(){const b=M.ball;if(b.power&&b.lastTeam===0)T_.shot=1;if(T_.shot)return 1;if(b.owner&&b.owner.team===1)tutReset();return 0}},
+  {t:'Warp field',d:()=>`A red attacker is heading for your goal. Press ${K('R')} to switch on the warp field. It slows the ball in your goal area and sends a defender at it.`,
+   set(){tutLayout();tutMe(330,120);const o=tutOpp(3,330,250);take(o);o.think=999;o.tutTo=[60,250,0.45];M.warpCd[0]=0},
+   tick(){if(M.warp[0]>0)return 1;const o=M.ball.owner;if(!o||o.team===0||o.x<90)tutReset();return 0}},
+  {t:'Keeper dive',d:()=>`Shots are coming at your goal. When the big ${K('F')} above your keeper turns green and says DIVE NOW, press ${K('F')}. Get a GOOD or PERFECT dive to finish.`,
+   set(){tutLayout();tutMe(400,80);M.diveCd[0]=0;T_.next=0.8},
+   tick(dt){const g=keeper(0);if(g.dive>0&&g.diveQ>0.45)T_.ok=1;if(T_.ok)return 1;
+     T_.next-=dt;if(T_.next<=0){T_.next=3.2;M.diveCd[0]=0;g.recover=0;g.stun=0;g.x=18;g.y=H/2;const s=tutOpp(3,230,rnd(200,300));take(s);shootAt(s,-10,rnd(0,1)<.5?GT+14:GB-14,0.75,false)}return 0}},
+];
+let TUT_I=0,T_={};
+function tutLayout(){
+  M.freeze=0;M.countdown=0;M.pendingKO=undefined;M.pendingEnd=false;M.banner='';M.bannerT=0;M.play=[null,null];M.press=[null,null];
+  const b=M.ball;b.owner=null;b.vx=b.vy=0;b.x=W/2;b.y=H/2;b.kind=null;b.target=null;b.power=false;b.loft=0;
+  for(const e of M.ents){e.vx=e.vy=0;e.stun=0;e.slide=0;e.dive=0;e.recover=0;e.tutTo=null;e.stam=1;e.fx=e.team?-1:1;e.fy=0;
+    if(e.gk){e.x=e.team?W-18:18;e.y=H/2}else{e.x=e.team?600+e.slot*40:60+e.slot*40;e.y=e.slot%2?28:H-28}}  // spare players wait along the walls
+}
+function tutMe(x,y){const c=M.ents.find(e=>e.team===0&&e.slot===3);c.x=x;c.y=y;M.ctrl[0]=c;return c}
+function tutMate(i,x,y){const e=M.ents.find(q=>q.team===0&&q.slot===(i===1?4:2));e.x=x;e.y=y;return e}
+function tutOpp(slot,x,y){const e=M.ents.find(q=>q.team===1&&q.slot===slot);e.x=x;e.y=y;e.vx=e.vy=0;return e}
+function tutGive(e){take(e);e.immune=999;T_.giver=e}
+function tutReset(){const step=TUT_I;T_={step,s0:M.score[0]};TUT[step].set();}
+function tutGo(i){
+  TUT_I=i;
+  if(i>=TUT.length){tutFinish();return}
+  T_={step:i,s0:M.score[0]};TUT[i].set();
+  $('#tutStep').textContent=`Step ${i+1} of ${TUT.length}`;
+  $('#tutTitle').textContent=TUT[i].t;$('#tutText').innerHTML=TUT[i].d();
+  $('#tutDots').innerHTML=TUT.map((_,k)=>`<i class="${k<i?'done':k===i?'on':''}"></i>`).join('');
+  $('#tutDone').hidden=true;$('#tutBar').style.width='0';$('#tutNext').hidden=true;$('#tutSkip').hidden=false;
+}
+function tutTick(dt){
+  if(T_.done)return;
+  const f=clamp(TUT[TUT_I].tick(dt)||0,0,1);
+  // no kickoffs in the tutorial: after a goal, put the lesson back
+  if(f<1&&M.pendingKO!==undefined){M.pendingKO=undefined;T_.resetIn=0.9}
+  if(T_.resetIn!==undefined&&f<1){T_.resetIn-=dt;if(T_.resetIn<=0){const n=T_.next;tutReset();if(n!==undefined)T_.next=0.6}}
+  $('#tutBar').style.width=(f*100)+'%';
+  if(f>=1){T_.done=true;$('#tutDone').hidden=false;$('#tutDone').textContent=pick(['Nice!','Got it!','Great!']);
+    const nb=$('#tutNext');nb.textContent=TUT_I===TUT.length-1?'Finish':'Continue';nb.hidden=false;$('#tutSkip').hidden=true}
+}
+function tutFinish(){
+  $('#tut').hidden=true;
+  $('#resScore').textContent='Done';$('#resLine').textContent="You're ready to play";
+  $('#resBtns').innerHTML='<button class="btn" id="rAgain">Play vs AI</button><button class="btn ghost" id="rMenu">Menu</button>';
+  $('#rAgain').onclick=()=>{mode=null;startDemo();setStage('menu');showDiff(true)};
+  $('#rMenu').onclick=toMenu;
+  M.over=true;setStage('result');
+}
+function startTutorial(){
+  mode='tut';
+  M=newMatch(makeStarTeam('barca'),makeStarTeam('madrid',-1),{kits:['barca','madrid'],names:['Barcelona','Real Madrid'],diff:'easy',human:[true,false],local:0,dur:1e9});
+  M.tut=true;M.inp[0]=LI;
+  setStage('match');$('#tut').hidden=false;$('#endrow').hidden=true;
+  tutGo(0);
+}
+$('#tutBtn').onclick=startTutorial;
+$('#tutNext').onclick=()=>{if(mode==='tut'&&T_.done){$('#tutNext').blur();tutGo(TUT_I+1)}};
+$('#tutSkip').onclick=()=>{if(mode==='tut'){T_.done=true;tutGo(TUT_I+1)}};
+$('#tutRetry').onclick=()=>{if(mode==='tut')tutReset()};
+$('#tutExit').onclick=toMenu;
+
 // ---------- loop ----------
 let last=performance.now(),sendAcc=0;
 function loop(now){
@@ -1836,6 +1965,7 @@ function loop(now){
     if(M.guest){if(!M.over){guestTick(dt);sendInput()}}
     else if(!M.over){
       update(dt);
+      if(mode==='tut')tutTick(dt);
       if(mode==='pvp'&&!M.demo&&net.role==='host'&&M){sendAcc+=dt;if(sendAcc>=1/30){sendAcc=0;nsend(snap())}}
     }
   }
