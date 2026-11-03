@@ -1568,6 +1568,24 @@ function recvSnap(s){
 function lerpAngle(ax,ay,bx,by,f){const a=Math.atan2(ay,ax),b=Math.atan2(by,bx);const d=Math.atan2(Math.sin(b-a),Math.cos(b-a));const r=a+d*f;return[Math.cos(r),Math.sin(r)]}
 function guestTick(dt){
   if(!G.buf.length)return;
+  guestStep(dt);
+  smoothDisplay(dt);
+}
+// Hides discontinuities (control switches, passes, late packets) by gliding instead of teleporting
+function smoothDisplay(dt){
+  const decay=Math.exp(-dt*12);
+  for(const e of [...M.ents,M.ball]){
+    let ox=(e.ox||0)*decay,oy=(e.oy||0)*decay;
+    let dx=e.x+ox,dy=e.y+oy;
+    if(e.lx!==undefined&&!(M.freeze>0)&&!(M.countdown>0)){
+      const st=hyp(dx-e.lx,dy-e.ly),lim=(e===M.ball?950:430)*dt+2;
+      if(st>lim&&st<170){const k=1-lim/st;ox+=(e.lx-dx)*k;oy+=(e.ly-dy)*k;dx=e.x+ox;dy=e.y+oy}
+    }
+    e.ox=Math.abs(ox)<0.05?0:ox;e.oy=Math.abs(oy)<0.05?0:oy;
+    e.x=dx;e.y=dy;e.lx=dx;e.ly=dy;
+  }
+}
+function guestStep(dt){
   const now=performance.now(),rt=now-INTERP_MS;
   let a=null,b=null;
   for(let k=G.buf.length-1;k>=0;k--){if(G.buf[k].at<=rt){a=G.buf[k];b=G.buf[k+1]||null;break}}
@@ -1588,7 +1606,7 @@ function guestTick(dt){
   // predict our own player from local input
   let P=G.pred;
   const srv=newest.e[c.i];
-  if(!P||P.i!==c.i){P=G.pred={i:c.i,x:srv[0],y:srv[1],vx:srv[2],vy:srv[3],fx:srv[4],fy:srv[5]};G.hist.length=0;G.corrX=G.corrY=0}
+  if(!P||P.i!==c.i){const sx=c.lx??c.x,sy=c.ly??c.y;P=G.pred={i:c.i,x:sx,y:sy,vx:srv[2],vy:srv[3],fx:srv[4],fy:srv[5]};G.hist.length=0;G.corrX=srv[0]-sx;G.corrY=srv[1]-sy}
   const [ix,iy]=inVec(LI),moving=hyp(ix,iy)>0.1;
   let sp=maxSpd(c);const spr=sprintOf(LI)&&moving&&c.stam>0.02;if(spr)sp*=1.6;
   let dvx=ix*sp,dvy=iy*sp;
@@ -1603,7 +1621,7 @@ function guestTick(dt){
   for(const h of G.hist){h.x+=G.corrX*take;h.y+=G.corrY*take}
   G.corrX*=1-take;G.corrY*=1-take;
   // snap if we drifted far (e.g. a collision the prediction didn't know about)
-  if(hyp(P.x-srv[0],P.y-srv[1])>60){P.x=srv[0];P.y=srv[1];G.hist.length=0}
+  if(hyp(P.x-srv[0],P.y-srv[1])>140){P.x=srv[0];P.y=srv[1];G.hist.length=0}
   const v=hyp(P.vx,P.vy);
   if(LI.over&&v<=15){const dx=LI.mx-P.x,dy=LI.my-P.y,m=hyp(dx,dy);if(m>4){P.fx=dx/m;P.fy=dy/m}}
   else if(v>15){P.fx=P.vx/v;P.fy=P.vy/v}
