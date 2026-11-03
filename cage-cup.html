@@ -1328,6 +1328,15 @@ function resize(){
   scale=cv.width/860;
 }
 window.addEventListener('resize',resize);
+window.addEventListener('orientationchange',()=>{for(const t of [50,250,600])setTimeout(resize,t)});
+if(window.visualViewport)visualViewport.addEventListener('resize',resize);
+// iPhone settles its layout a beat after rotating, so the canvas can end up the wrong size and look stretched.
+// Check every frame that the drawing buffer still matches the size on screen.
+function keepSize(){
+  const r=cv.getBoundingClientRect();if(!r.width||!r.height)return;
+  const dpr=Math.min(2,window.devicePixelRatio||1),w=Math.round(r.width*dpr),h=Math.round((camOn()?r.height:r.width*540/860)*dpr);
+  if(Math.abs(cv.width-w)>1||Math.abs(cv.height-h)>1)resize();
+}
 function drawWarp(cx,left,rgb,ring){
   const now=performance.now()/1000,a=Math.min(1,left*2),s0=cx?Math.PI/2:-Math.PI/2,s1=cx?Math.PI*1.5:Math.PI/2;
   ctx.save();ctx.beginPath();ctx.rect(0,0,W,H);ctx.clip();
@@ -1419,6 +1428,7 @@ function bigText(txt,y,size,col){
 }
 function draw(){
   if(!M)return;
+  keepSize();
   const L=M.local,human=!M.demo;
   ctx.setTransform(1,0,0,1,0,0);
   ctx.fillStyle='#0a131a';ctx.fillRect(0,0,cv.width,cv.height);
