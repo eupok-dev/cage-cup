@@ -421,9 +421,9 @@ const FORMS=[
 const DIVE_CD=5,DIVE_RANGE=200,WARP_DUR=4,WARP_CD=20,WARP_R=110;
 const PLAY_CD=5,AI_PLAY_CD=12,PLAY_WINDOW=2.5,PLAY_SEARCH=3.5,PASS_TOL=0.21;
 const DIFFS={
-  easy:{off:-2,n:'Easy',d:'Slower, sloppier opponents. No special abilities.',lvl:3.6,tack:0.5,chase:0.72,shotErr:1.8,shootP:0.35,plays:false,warp:false,dive:false,playCd:999,dSpread:0.42,diveChance:0,diveCd:10},
-  normal:{off:-1,n:'Default',d:'A fair match. Abilities used now and then.',lvl:4.2,tack:0.85,chase:0.8,shotErr:1.35,shootP:0.42,plays:true,warp:false,dive:true,playCd:22,dSpread:0.4,diveChance:0.4,diveCd:10},
-  pro:{off:0,n:'Pro',d:'Sharp, aggressive, uses every ability.',lvl:5,tack:1.15,chase:0.88,shotErr:1,shootP:0.55,plays:true,warp:false,dive:true,playCd:12,dSpread:0.34,diveChance:0.6,diveCd:8},
+  easy:{off:-2,n:'Easy',d:'Slower, sloppier opponents. No special abilities.',lvl:3.6,tack:0.35,chase:0.66,shotErr:1.9,shootP:0.32,dbl:false,plays:false,warp:false,dive:false,playCd:999,dSpread:0.42,diveChance:0,diveCd:10},
+  normal:{off:-2,n:'Default',d:'A fair match. Abilities used now and then.',lvl:4.2,tack:0.55,chase:0.74,shotErr:1.6,shootP:0.36,dbl:false,plays:true,warp:false,dive:true,playCd:32,dSpread:0.42,diveChance:0.3,diveCd:10},
+  pro:{off:0,n:'Pro',d:'Sharp, aggressive, uses every ability.',lvl:5,tack:1.15,dbl:true,chase:0.88,shotErr:1,shootP:0.55,plays:true,warp:false,dive:true,playCd:12,dSpread:0.34,diveChance:0.6,diveCd:8},
 };
 const ownGoalX=t=>t?W:0,oppGoalX=t=>t?0:W,dirOf=t=>t?-1:1;
 const TEAMCOL=['#ffb627','#e5484d'];
@@ -474,10 +474,13 @@ function kickoff(team){
   M.freeze=1.1;
 }
 function stat(e,k){return e.p[k]}
+// holding the ball too long: legs get heavy, touches get loose, defenders win it easily. Passing resets it.
+const HOLD_FREE=2.2,HOLD_RAMP=2.8;
+function heavy(e){return M.ball.owner===e&&!e.gk?clamp(((e.carry||0)-HOLD_FREE)/HOLD_RAMP,0,1):0}
 function maxSpd(e){
   let s=72+stat(e,'pace')*11;
   s*=0.78+0.22*(e.p.energy/100);
-  if(M.ball.owner===e)s*=0.84;
+  if(M.ball.owner===e)s*=0.84*(1-0.32*heavy(e));
   if(e.burst>0)s*=1.3;
   if(e.skill>0)s*=1.25;
   if(e.recover>0)s*=0.3;
@@ -489,6 +492,8 @@ function maxSpd(e){
 function pop(x,y,txt,col='#eef1e8'){M.pops.push({x,y,txt,col,t:0.9})}
 function take(e){
   const b=M.ball;
+  const fromMate=(b.kind==='pass'||b.kind==='through')&&b.lastTeam===e.team&&!b.owner;
+  e.carry=0;e.heavyPop=0;if(fromMate&&!e.gk)e.burst=Math.max(e.burst||0,0.35);
   b.owner=e;b.kind=null;b.vx=b.vy=0;b.rolled=new Set();b.lastTeam=e.team;b.target=null;b.loft=0;b.power=false;
   e.immune=isHuman(e.team)?0.5:0.4;
   if(e.gk){e.hold=isHuman(e.team)?4:0.8;if(e.dive>0){e.dive=0;e.stun=0.15}e.fx=dirOf(e.team);e.fy=0}
@@ -855,7 +860,7 @@ function aiTarget(e,dt){
   // second presser: double-team a carrier near our goal (or help a human who is already pressing)
   if(o&&o.team!==T&&!e.gk){
     const danger=Math.abs(o.x-ownGoalX(T))<340;
-    if(danger||humanOnIt){
+    if((danger&&(isHuman(T)||M.diff.dbl))||humanOnIt){
       const helper=nearestTo(T,o.x,o.y,ch||hc);
       if(e===helper&&hyp(e.x-o.x,e.y-o.y)<260){
         const gx=ownGoalX(T),gy=H/2,gd=hyp(gx-o.x,gy-o.y)||1;
@@ -1038,7 +1043,9 @@ function update(dt){
   }
   // ball
   if(b.owner){
-    const o=b.owner;b.x=clamp(o.x+o.fx*10,3,W-3);b.y=clamp(o.y+o.fy*10,3,H-3);
+    const o=b.owner;o.carry=(o.carry||0)+dt;const hv=heavy(o);
+    if(hv>0.25&&!o.heavyPop){o.heavyPop=1;if(isHuman(o.team))pop(o.x,o.y-20,'HEAVY LEGS · PASS','#ffb627')}
+    const bo=10+9*hv;b.x=clamp(o.x+o.fx*bo,3,W-3);b.y=clamp(o.y+o.fy*bo,3,H-3);
     if(o.immune<=0&&!o.gk){
       for(const e of es){
         if(e.team===o.team||e.gk||e.stun>0)continue;
@@ -1049,7 +1056,7 @@ function update(dt){
          if((e.fx*dx+e.fy*dy)/d<0.2)continue;
          if((o.fx*-dx+o.fy*-dy)/d<-0.5)back=0.55}
         if(isCtrl(e)||(M.tut&&e.team===1))continue;
-        let r=3.8*(0.4+stat(e,'tack')*0.06)*back;
+        let r=3.8*(0.4+stat(e,'tack')*0.06)*back*(1+2.5*heavy(o));
         if(isHuman(o.team))r*=isHuman(e.team)?0.8:M.diff.tack;
         if(Math.random()<r*dt){o.stun=0.35;take(e);break}
       }
@@ -1066,7 +1073,7 @@ function update(dt){
         const turn=Math.abs(Math.atan2(Math.sin(a-pr.ang),Math.cos(a-pr.ang)));
         if(turn>0.7||o.skill>0){M.press[T]=null;pop(o.x,o.y-18,'TURNED','#e5484d')}
         else{
-          pr.t+=dt*(1.0+stat(c,'tack')*0.08);
+          pr.t+=dt*(1.0+stat(c,'tack')*0.08)*(1+2*heavy(o));
           if(pr.t>=1){M.press[T]=null;o.stun=0.4;take(c);pop(c.x,c.y-18,'WON IT','#4cc38a');break}
         }
       }else if(M.press[T]){M.press[T].t-=dt*1.5;if(M.press[T].t<=0||d>40)M.press[T]=null}
@@ -1153,7 +1160,7 @@ function update(dt){
 function snap(){
   const b=M.ball;
   return{t:'s',
-    e:M.ents.map(e=>[r1(e.x),r1(e.y),r1(e.vx),r1(e.vy),r1(e.fx),r1(e.fy),r1(e.stun),r1(e.slide),r1(e.sdx),r1(e.sdy),r1(e.dive),r1(e.ddx),r1(e.ddy),r1(e.burst),r1(e.stam),r1(e.recover),r1(e.skill)]),
+    e:M.ents.map(e=>[r1(e.x),r1(e.y),r1(e.vx),r1(e.vy),r1(e.fx),r1(e.fy),r1(e.stun),r1(e.slide),r1(e.sdx),r1(e.sdy),r1(e.dive),r1(e.ddx),r1(e.ddy),r1(e.burst),r1(e.stam),r1(e.recover),r1(e.skill),r1(e.carry||0)]),
     b:[r1(b.x),r1(b.y),r1(b.vx),r1(b.vy),b.owner?b.owner.i:-1,b.kind||'',r1(b.loft||0),b.power?1:0,b.lastTeam,b.target?b.target.i:-1],
     sc:M.score,tm:r1(M.t),g:M.golden?1:0,fr:r1(M.freeze),cd:r1(M.countdown),bn:[M.banner,r1(M.bannerT),M.bannerTeam],
     pops:M.pops.map(p=>[r1(p.x),r1(p.y),p.txt,p.col,r1(p.t)]),
@@ -1356,6 +1363,12 @@ function draw(){
     if(c.stam<1){
       ctx.fillStyle='rgba(0,0,0,.5)';ctx.fillRect(c.x-14,c.y+17,28,4);
       ctx.fillStyle=c.stam>0.25?'#eef1e8':'#e5484d';ctx.fillRect(c.x-14,c.y+17,28*c.stam,4);
+    }
+    if(M.ball.owner===c&&!c.gk){
+      // hold timer: ring fills as you keep the ball; red means heavy legs
+      const hf=clamp((c.carry||0)/(HOLD_FREE+HOLD_RAMP),0,1),hv=heavy(c);
+      ctx.strokeStyle='rgba(0,0,0,.35)';ctx.lineWidth=3;ctx.beginPath();ctx.arc(c.x,c.y,15,0,7);ctx.stroke();
+      ctx.strokeStyle=hv>0?`rgba(229,72,77,${0.6+0.4*hv})`:'rgba(238,241,232,.55)';ctx.beginPath();ctx.arc(c.x,c.y,15,-Math.PI/2,-Math.PI/2+hf*Math.PI*2);ctx.stroke();
     }
   }
   const b=M.ball;
@@ -1582,7 +1595,7 @@ function beginPvp(teams){
   setStage('match');header();
 }
 function applySnap(s){
-  M.ents.forEach((e,i)=>{const a=s.e[i];if(!a)return;[e.x,e.y,e.vx,e.vy,e.fx,e.fy,e.stun,e.slide,e.sdx,e.sdy,e.dive,e.ddx,e.ddy,e.burst,e.stam,e.recover,e.skill]=a});
+  M.ents.forEach((e,i)=>{const a=s.e[i];if(!a)return;[e.x,e.y,e.vx,e.vy,e.fx,e.fy,e.stun,e.slide,e.sdx,e.sdy,e.dive,e.ddx,e.ddy,e.burst,e.stam,e.recover,e.skill,e.carry]=a});
   const b=M.ball,B=s.b;
   [b.x,b.y,b.vx,b.vy]=B;b.owner=B[4]>=0?M.ents[B[4]]:null;b.kind=B[5]||null;b.loft=B[6];b.power=!!B[7];b.lastTeam=B[8];b.target=B[9]>=0?M.ents[B[9]]:null;
   M.score=s.sc;M.t=s.tm;M.golden=!!s.g;M.freeze=s.fr;M.countdown=s.cd;[M.banner,M.bannerT,M.bannerTeam]=s.bn;
@@ -1637,7 +1650,7 @@ function ballAhead(){
   // free ball: show where it is now (newest packet + travel since), not 80 ms ago
   const last=G.buf[G.buf.length-1],B=last.s.b,b=M.ball;
   if(B[4]>=0||B[8]!==M.local)G.ownBall=false;
-  if(B[4]>=0){const o=M.ents[B[4]];if(o){b.owner=o;b.x=clamp(o.x+o.fx*10,3,W-3);b.y=clamp(o.y+o.fy*10,3,H-3)}return}
+  if(B[4]>=0){const o=M.ents[B[4]];if(o){b.owner=o;const bo=10+9*heavy(o);b.x=clamp(o.x+o.fx*bo,3,W-3);b.y=clamp(o.y+o.fy*bo,3,H-3)}return}
   if(M.freeze>0||M.countdown>0)return;
   // after our own kick, run the ball ahead by the round trip so it stays on the path we already showed
   const extra=G.ownBall?Math.min(0.3,G.rtt/1000):0;
@@ -1699,7 +1712,7 @@ function guestStep(dt){
   const srv=newest.e[c.i];
   if(!P||P.i!==c.i){const sx=c.lx??c.x,sy=c.ly??c.y;P=G.pred={i:c.i,x:sx,y:sy,vx:srv[2],vy:srv[3],fx:srv[4],fy:srv[5]};G.hist.length=0;G.corrX=srv[0]-sx;G.corrY=srv[1]-sy}
   const [ix,iy]=inVec(LI),moving=hyp(ix,iy)>0.1;
-  let sp=maxSpd(c);const spr=sprintOf(LI)&&moving&&c.stam>0.02;if(spr)sp*=1.6;
+  let sp=maxSpd(c);const spr=sprintOf(LI)&&moving&&c.stam>0.02;if(spr)sp*=M.ball.owner===c?1.25:1.6;
   let dvx=ix*sp,dvy=iy*sp;
   const bl=M.ball;
   if(!moving&&!bl.owner&&bl.target===c){dvx=srv[2];dvy=srv[3]}
@@ -1873,7 +1886,7 @@ const TUT=[
   {t:'Aim with the mouse',d:()=>`Move your mouse over the pitch. When you stand still your player turns to face the cursor, and every pass and shot aims at it. Sweep the cursor around your player.`,
    set(){tutLayout();tutMe(400,250)},
    tick(){const c=M.ctrl[0];if(!c||!LI.over)return T_.turn/6.28||0;const a=Math.atan2(c.fy,c.fx);if(T_.a!==undefined){let d=Math.abs(a-T_.a);d=Math.min(d,6.283-d);if(d<1)T_.turn=(T_.turn||0)+d}T_.a=a;return (T_.turn||0)/6.28}},
-  {t:'Pass',d:()=>`Point the cursor at a teammate and press ${K('Space')}. A green dashed ring on him means the pass is clean. Yellow or red means you're aiming off.`,
+  {t:'Pass',d:()=>`Point the cursor at a teammate and press ${K('Space')}. A green dashed ring on him means the pass is clean. Yellow or red means you're aiming off. The ring around you fills while you hold the ball. Once it turns red your legs get heavy and defenders take it easily, so keep passing.`,
    set(){tutLayout();const me=tutMe(300,250);tutGive(me);tutMate(1,430,170);tutMate(2,430,330)},
    tick(){const o=M.ball.owner;if(o&&o.team===0&&o!==T_.giver&&!o.gk)return 1;if(o&&o.team===1)tutReset();return 0}},
   {t:'Shoot',d:()=>`Hold ${K('Left-click')} to charge, then release to shoot at the cursor. Don't hold it into the red zone or you'll overhit. Score a goal.`,
