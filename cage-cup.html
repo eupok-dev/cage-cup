@@ -100,7 +100,36 @@ button:focus-visible,.pcard:focus-visible{outline:3px solid var(--chalk);outline
 #overlay.wide #careerPanel{flex:1;min-height:0;display:flex;flex-direction:column;gap:0;width:auto;max-width:none;align-self:stretch;align-items:stretch}
 #careerPanel[hidden]{display:none!important}
 #careerBody{flex:1;min-height:0;display:flex;flex-direction:column}
-.chead{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding-bottom:10px}
+.chead{display:flex;align-items:center;gap:8px 16px;flex-wrap:wrap;padding-bottom:10px}
+/* dev mode: testing buttons only show when it is on */
+body:not(.dev) .skipb,body:not(.dev) #testSkip{display:none!important}
+.devlink{background:none;border:0;color:var(--muted);font:600 12px var(--body);text-decoration:underline;cursor:pointer;padding:4px}
+body.dev .devlink[data-dev=on],body:not(.dev) .devlink[data-dev=off]{display:none}
+.foot{display:flex;justify-content:center;gap:12px;padding:18px 0 24px}
+.menufoot{order:9;display:flex;gap:10px;align-items:center}
+.devtag{display:none;font:800 11px var(--display);letter-spacing:.06em;color:#0d1820;background:#ffb627;border-radius:4px;padding:2px 6px}
+body.dev .devtag{display:inline-block}
+.devbox{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:8px;width:min(320px,100%)}
+.devbox h3{font:900 22px var(--display);text-transform:uppercase}
+.devmsg{margin:0;min-height:1.2em;font-size:13px;color:#e5484d}
+/* campaign on small screens */
+.lbtns{display:flex;gap:6px;align-items:center;margin-left:auto;flex:none}
+.sslot .ccard{min-height:0;flex:1}
+.ccard.empty{min-height:110px}
+.squadrow.t .ccard.empty{min-height:90px;max-height:130px}
+@media (max-width:700px){
+  body.mob #overlay.wide,#overlay.wide{position:fixed;inset:0;z-index:50;border-radius:0;background:#0d1820;padding:max(12px,env(safe-area-inset-top)) 12px 12px}
+  .ladder li.locked .lbtns{width:auto}
+  .ladder li{flex-wrap:wrap;gap:8px 10px}
+  .linfo{flex:1 1 160px}
+  .lbtns{width:100%;justify-content:flex-end}
+  .cclub{font-size:19px}
+  .ctabs{overflow-x:auto;scrollbar-width:none}.ctabs::-webkit-scrollbar{display:none}
+  .ctabs button{padding:8px 10px;font-size:14px;white-space:nowrap;flex:none}
+  .ccoins{margin-left:0}
+  .cgrid{grid-template-columns:repeat(auto-fill,minmax(140px,1fr))}
+  .squadrow.t{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
 .cclub{display:flex;align-items:center;gap:8px;font:900 22px var(--display);text-transform:uppercase}
 .cclub .muted{font:600 13px var(--body);text-transform:none}
 .kdot{display:inline-block;width:16px;height:16px;border-radius:50%;border:2px solid rgba(255,255,255,.6);flex:none}
@@ -510,6 +539,7 @@ details.hint summary{cursor:pointer;font-family:var(--display);font-weight:800;f
         <section class="panel" id="menuPanel">
           <h1>Cage<b>Cup</b></h1>
           <p id="menuSub">Six-a-side cage football. Pick an opponent.</p>
+          <div class="menufoot"><button class="devlink" data-dev="on">Dev mode</button><button class="devlink" data-dev="off">Exit dev mode</button><span class="devtag">DEV MODE ON</span></div>
           <div class="modes" id="modeRow"><button class="btn big" id="careerBtn">Campaign</button><button class="btn big ghost" id="vsAiBtn">Play vs AI</button><button class="btn big ghost" id="vsPersonBtn">Play vs Person</button><button class="btn big ghost" id="tutBtn">Tutorial</button></div>
           <div class="diffs" id="diffRow" hidden>
             <span class="label pickl">Your team</span>
@@ -631,8 +661,12 @@ details.hint summary{cursor:pointer;font-family:var(--display);font-weight:800;f
       </div>
     </details>
   </main>
+  <footer class="foot"><button class="devlink" data-dev="on">Dev mode</button><button class="devlink" data-dev="off">Exit dev mode</button></footer>
 </div>
 <div id="packModal" class="pmodal" hidden></div>
+<div id="devModal" class="pmodal" hidden><form class="devbox" id="devForm"><h3>Dev mode</h3><label class="label" for="devPw">Password</label>
+  <input id="devPw" type="password" autocomplete="off" class="codein" inputmode="text"><p class="devmsg" id="devMsg"></p>
+  <div class="row"><button class="btn small" type="submit">Enter</button><button class="btn ghost small" type="button" id="devCancel">Cancel</button></div></form></div>
 <script>
 // ===ENGINE START===
 // ---------- utils ----------
@@ -2474,6 +2508,15 @@ function startTutorial(){
 }
 $('#tutBtn').onclick=startTutorial;
 $('#careerBtn').onclick=()=>openCareer('play');
+// dev mode: password-gated testing buttons (skip clubs, skip to the end of a match)
+const DEVKEY='cagecup.dev';
+function setDev(on){document.body.classList.toggle('dev',on);try{on?localStorage.setItem(DEVKEY,'1'):localStorage.removeItem(DEVKEY)}catch(e){}}
+try{if(localStorage.getItem(DEVKEY)==='1')document.body.classList.add('dev')}catch(e){}
+document.querySelectorAll('.devlink').forEach(b=>b.onclick=()=>{
+  if(b.dataset.dev==='off'){setDev(false);if(stage==='career')renderCareer();else if(stage!=='menu')toMenu();return}
+  $('#devModal').hidden=false;$('#devMsg').textContent='';$('#devPw').value='';setTimeout(()=>$('#devPw').focus(),50)});
+$('#devCancel').onclick=()=>{$('#devModal').hidden=true};
+$('#devForm').onsubmit=e=>{e.preventDefault();if($('#devPw').value.trim()==='r53'){setDev(true);$('#devModal').hidden=true;if(stage==='career')renderCareer()}else $('#devMsg').textContent='Wrong password'};
 $('#tsWin').onclick=()=>testSkip(true);$('#tsLose').onclick=()=>testSkip(false);
 $('#tutNext').onclick=()=>{if(mode==='tut'&&T_.done){$('#tutNext').blur();tutGo(TUT_I+1)}};
 $('#tutSkip').onclick=()=>{if(mode==='tut'){T_.done=true;tutGo(TUT_I+1)}};
@@ -2790,7 +2833,7 @@ function renderLadder(){
     const rw=200+50*C.i,fb=400+100*C.i,pk=[2,5,8].includes(C.i)?` + ${PACKS[[2,5,8].indexOf(C.i)].n}`:'';
     return `<li class="${beaten?'won':''} ${open?'':'locked'} ${next?'next':''}"><span class="lnum">${C.i+1}</span><span class="kdot" style="background:${KITS[C.kit].main};border-color:${KITS[C.kit].ring||KITS[C.kit].label}"></span>
       <div class="linfo"><b>${C.name}</b><span>${C.blurb}</span><span class="muted">OVR ${Math.round(C.lvl*10)} · ${DIFFS[C.diff].n} · Win ${rw}${beaten?'':` · First win +${fb}${pk}`}</span></div>
-      ${open?`<button class="btn small${next?'':' ghost'}" data-play="${C.i}">${beaten?'Replay':'Play'}</button>`:'<span class="lock">Locked</span>'}${C.i===CR.stage&&C.i<CLUBS.length-1?`<button class="btn ghost small skipb" data-skip title="Testing only: unlock the next club without playing">Skip (test)</button>`:''}</li>`}).join('')}</ol>`;
+      <span class="lbtns">${open?`<button class="btn small${next?'':' ghost'}" data-play="${C.i}">${beaten?'Replay':'Play'}</button>`:'<span class="lock">Locked</span>'}${C.i===CR.stage&&C.i<CLUBS.length-1?`<button class="btn ghost small skipb" data-skip title="Testing only: unlock the next club without playing">Skip (test)</button>`:''}</span></li>`}).join('')}</ol>`;
 }
 function renderSquad(){
   const sl=CR.squad.map((id,k)=>`<div class="sslot${cpick&&cpick.k==='p'&&cpick.i===k?' sel':''}" data-slot="${k}"><span class="label">${k===0?'Keeper':'Outfield '+k}</span>${playerCardHTML(PBY[id])}</div>`).join('');
@@ -2820,7 +2863,7 @@ function renderTalents(){
 }
 function wireCareer(el){
   el.querySelectorAll('[data-play]').forEach(b=>b.onclick=()=>startCareerMatch(+b.dataset.play));
-  const sk=el.querySelector('[data-skip]');if(sk)sk.onclick=()=>{if(CR.stage<CLUBS.length-1){CR.stage++;saveCareer();renderCareer()}}; // testing: unlock the next club, no rewards
+  const sk=el.querySelector('[data-skip]');if(sk)sk.onclick=()=>{if(document.body.classList.contains('dev')&&CR.stage<CLUBS.length-1){CR.stage++;saveCareer();renderCareer()}}; // testing: unlock the next club, no rewards
   el.querySelectorAll('[data-slot]').forEach(b=>b.onclick=e=>{if(e.target.closest('button'))return;cpick={k:'p',i:+b.dataset.slot};renderCareer()});
   el.querySelectorAll('[data-tslot]').forEach(b=>b.onclick=e=>{if(e.target.closest('button'))return;cpick={k:'t',i:+b.dataset.tslot};renderCareer()});
   el.querySelectorAll('[data-swap]').forEach(b=>b.onclick=()=>{CR.squad[cpick.i]=b.dataset.swap;cpick=null;saveCareer();renderCareer()});
@@ -2872,7 +2915,7 @@ function beginCareerMatch(i){
   M.field=CLUB_GROUND[i];M.inp[0]=LI;setStage('match');$('#testSkip').hidden=false;
 }
 // testing: jump straight to the end of a campaign match to see the ending scene (no rewards)
-function testSkip(win){if(mode!=='career'||!M||M.over)return;M.testSkip=true;M.score=win?[2,0]:[0,2];hideEnd();$('#mSheet').classList.remove('open');endMatch()}
+function testSkip(win){if(!document.body.classList.contains('dev')||mode!=='career'||!M||M.over)return;M.testSkip=true;M.score=win?[2,0]:[0,2];hideEnd();$('#mSheet').classList.remove('open');endMatch()}
 function careerResult(sc){
   if(M&&M.testSkip)return{html:'<div class="rewards"><span class="muted">Test skip: no coins, XP or unlocks.</span></div>',freePack:null,next:null};
   const C=CLUBS[careerClub],win=sc[0]>sc[1],draw=sc[0]===sc[1];
