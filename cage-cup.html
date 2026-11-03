@@ -307,11 +307,6 @@ details.hint summary{cursor:pointer;font-family:var(--display);font-weight:800;f
           <circle cx="15" cy="30" r="3.2" class="pdot"/><circle cx="33" cy="18" r="3.2" class="pdot"/><path d="M17.5 27.5 L30 20" class="parrow"/><path d="M35 21 L38 31" class="parrow"/></svg>
         <div class="ptext"><span class="pk"><kbd>Q</kbd> Set play</span><span class="pstate" id="pstate">Ready</span><span class="pmsg" id="pmsg"></span></div>
       </div>
-      <div class="ptile warp" id="wtile">
-        <svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="20" class="ptrack"/><circle cx="24" cy="24" r="20" class="pring" id="wring"/>
-          <path d="M14 15 A12 12 0 0 1 14 33" class="parrow"/><path d="M19 18 A8 8 0 0 1 19 30" class="parrow"/><path d="M24 21 A4 4 0 0 1 24 27" class="parrow"/><circle cx="33" cy="24" r="3.2" class="pdot"/></svg>
-        <div class="ptext"><span class="pk"><kbd>R</kbd> Warp field</span><span class="pstate" id="wstate">Ready</span><span class="pmsg" id="wmsg"></span></div>
-      </div>
       <div class="ptile dive" id="dtile">
         <svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="20" class="ptrack"/><circle cx="24" cy="24" r="20" class="pring" id="dring"/>
           <circle cx="18" cy="28" r="4" class="pdot"/><path d="M21 25 L31 17" class="parrow"/><path d="M13 31 L9 34" class="parrow"/><circle cx="34" cy="15" r="2.6" class="pdot"/></svg>
@@ -343,7 +338,6 @@ details.hint summary{cursor:pointer;font-family:var(--display);font-weight:800;f
           <div class="krow"><span class="k"><kbd>E</kbd></span><span>Tackle (from the front)</span></div>
           <div class="krow"><span class="k"><kbd>Shift</kbd>+<kbd>E</kbd></span><span>Slide tackle</span></div>
           <div class="krow"><span class="k"><kbd>F</kbd></span><span>Keeper dive</span></div>
-          <div class="krow"><span class="k"><kbd>R</kbd></span><span>Warp field</span></div>
           <div class="krow"><span class="k"><kbd>Space</kbd></span><span>Switch player</span></div>
         </div>
         <div class="kgroup adv"><h4>Hold right-click +</h4>
@@ -428,8 +422,8 @@ const DIVE_CD=5,DIVE_RANGE=200,WARP_DUR=4,WARP_CD=20,WARP_R=110;
 const PLAY_CD=5,AI_PLAY_CD=12,PLAY_WINDOW=2.5,PLAY_SEARCH=3.5,PASS_TOL=0.21;
 const DIFFS={
   easy:{off:-2,n:'Easy',d:'Slower, sloppier opponents. No special abilities.',lvl:3.6,tack:0.5,chase:0.72,shotErr:1.8,shootP:0.35,plays:false,warp:false,dive:false,playCd:999,dSpread:0.42,diveChance:0,diveCd:10},
-  normal:{off:-1,n:'Default',d:'A fair match. Abilities used now and then.',lvl:4.2,tack:0.85,chase:0.8,shotErr:1.35,shootP:0.42,plays:true,warp:true,dive:true,playCd:22,dSpread:0.4,diveChance:0.4,diveCd:10},
-  pro:{off:0,n:'Pro',d:'Sharp, aggressive, uses every ability.',lvl:5,tack:1.15,chase:0.88,shotErr:1,shootP:0.55,plays:true,warp:true,dive:true,playCd:12,dSpread:0.34,diveChance:0.6,diveCd:8},
+  normal:{off:-1,n:'Default',d:'A fair match. Abilities used now and then.',lvl:4.2,tack:0.85,chase:0.8,shotErr:1.35,shootP:0.42,plays:true,warp:false,dive:true,playCd:22,dSpread:0.4,diveChance:0.4,diveCd:10},
+  pro:{off:0,n:'Pro',d:'Sharp, aggressive, uses every ability.',lvl:5,tack:1.15,chase:0.88,shotErr:1,shootP:0.55,plays:true,warp:false,dive:true,playCd:12,dSpread:0.34,diveChance:0.6,diveCd:8},
 };
 const ownGoalX=t=>t?W:0,oppGoalX=t=>t?0:W,dirOf=t=>t?-1:1;
 const TEAMCOL=['#ffb627','#e5484d'];
@@ -927,7 +921,6 @@ function controlTeam(T,dt){
     if(a==='form'){setFormT(T,act.f);continue}
     if(a==='end'){endMatch();return}
     if(a==='dive'){const g=keeper(T);const st=diveStatus(g);if(st.ok&&g.stun<=0&&!(g.dive>0))startDive(g);else if(g)pop(g.x,g.y-18,'NOT YET','#8ea3ad');continue}
-    if(a==='warp'){if(M.warpCd[T]<=0)startWarp(T);else pop(c.x,c.y-18,'NOT YET','#8ea3ad');continue}
     if(a==='play'){const P=M.play[T];if(P&&P.phase!=='run'){M.play[T]=null;M.playCd[T]=1}else if(!P)tryPlay(T,c);continue}
     const P=M.play[T];
     if(P&&P.phase==='ready'&&a==='pass'&&b.owner===c){P.phase='run';P.t=0;playPass(c,P.mate);continue}
@@ -1459,14 +1452,10 @@ function ctrlHud(){
   $('#dstate').textContent=dstate==='charging'?'Charging':'Ready';
   $('#dmsg').textContent=dst.msg;
   $('#dring').style.strokeDashoffset=String(125.7*(1-clamp(dfr,0,1)));
-  $('#wtile').className='ptile warp '+wst;
-  $('#wstate').textContent=wst==='charging'?'Charging':wst==='active'?'Active':'Ready';
-  $('#wmsg').textContent=wmsg;
-  $('#wring').style.strokeDashoffset=String(125.7*(1-clamp(wfr,0,1)));
 }
 
 // ---------- input wiring ----------
-const CAPTURE=['n','arrowup','arrowdown','arrowleft','arrowright',' ','w','a','s','d','j','l','q','e','r','f','1','2','3','shift'];
+const CAPTURE=['n','arrowup','arrowdown','arrowleft','arrowright',' ','w','a','s','d','j','l','q','e','f','1','2','3','shift'];
 let endMode=null;
 window.addEventListener('keydown',e=>{
   const k=e.key.toLowerCase();
@@ -1481,7 +1470,6 @@ window.addEventListener('keydown',e=>{
   if(k==='e')act({a:LI.keys.has('shift')?'slide':'tackle'});
   if(k==='shift'&&LI.rmb)act({a:'skill'});
   if(k==='q')act({a:'play'});
-  if(k==='r')act({a:'warp'});
   if(k==='f')act({a:'dive'});
   if(k==='1'||k==='2'||k==='3')act({a:'form',f:+k-1});
   if(k==='n')showNames=!showNames;
@@ -1897,9 +1885,6 @@ const TUT=[
   {t:'Set play',d:()=>`Near the opponent's goal with the ball, press ${K('Q')}. A teammate runs into space. When his blue ring pulses, press ${K('Space')} and he fires a power shot first time.`,
    set(){tutLayout();const me=tutMe(560,190);tutGive(me);tutMate(1,520,330);tutMate(2,470,260);M.playCd[0]=0},
    tick(){const b=M.ball;if(b.power&&b.lastTeam===0)T_.shot=1;if(T_.shot)return 1;if(b.owner&&b.owner.team===1)tutReset();return 0}},
-  {t:'Warp field',d:()=>`A red attacker is heading for your goal. Press ${K('R')} to switch on the warp field. It slows the ball in your goal area and sends a defender at it.`,
-   set(){tutLayout();tutMe(330,120);const o=tutOpp(3,330,250);take(o);o.think=999;o.tutTo=[60,250,0.45];M.warpCd[0]=0},
-   tick(){if(M.warp[0]>0)return 1;const o=M.ball.owner;if(!o||o.team===0||o.x<90)tutReset();return 0}},
   {t:'Keeper dive',d:()=>`Shots are coming at your goal. When the big ${K('F')} above your keeper turns green and says DIVE NOW, press ${K('F')}. Get a GOOD or PERFECT dive to finish.`,
    set(){tutLayout();tutMe(400,80);M.diveCd[0]=0;T_.next=0.8},
    tick(dt){const g=keeper(0);if(g.dive>0&&g.diveQ>0.45)T_.ok=1;if(T_.ok)return 1;
