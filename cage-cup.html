@@ -1364,6 +1364,10 @@ function draw(){
       ctx.fillStyle='rgba(0,0,0,.5)';ctx.fillRect(c.x-14,c.y+17,28,4);
       ctx.fillStyle=c.stam>0.25?'#eef1e8':'#e5484d';ctx.fillRect(c.x-14,c.y+17,28*c.stam,4);
     }
+    if(M.tut&&T_&&T_.charge>0){const s=M.ents.find(q=>q.team===1&&q.slot===3);if(s){
+      // tutorial: show the shooter's wind-up so the dive timing can be read
+      ctx.fillStyle='rgba(0,0,0,.6)';ctx.fillRect(s.x-20,s.y-30,40,7);
+      ctx.fillStyle='#ff5c8c';ctx.fillRect(s.x-20,s.y-30,40*T_.charge,7)}}
     if(M.ball.owner===c&&!c.gk){
       // hold timer: ring fills as you keep the ball; red means heavy legs
       const hf=clamp((c.carry||0)/(HOLD_FREE+HOLD_RAMP),0,1),hv=heavy(c);
@@ -1898,10 +1902,21 @@ const TUT=[
   {t:'Set play',d:()=>`Near the opponent's goal with the ball, press ${K('Q')}. A teammate runs into space. When his blue ring pulses, press ${K('Space')} and he fires a power shot first time.`,
    set(){tutLayout();const me=tutMe(560,190);tutGive(me);tutMate(1,520,330);tutMate(2,470,260);M.playCd[0]=0},
    tick(){const b=M.ball;if(b.power&&b.lastTeam===0)T_.shot=1;if(T_.shot)return 1;if(b.owner&&b.owner.team===1)tutReset();return 0}},
-  {t:'Keeper dive',d:()=>`Shots are coming at your goal. When the big ${K('F')} above your keeper turns green and says DIVE NOW, press ${K('F')}. Get a GOOD or PERFECT dive to finish.`,
-   set(){tutLayout();tutMe(400,80);M.diveCd[0]=0;T_.next=0.8},
-   tick(dt){const g=keeper(0);if(g.dive>0&&g.diveQ>0.45)T_.ok=1;if(T_.ok)return 1;
-     T_.next-=dt;if(T_.next<=0){T_.next=3.2;M.diveCd[0]=0;g.recover=0;g.stun=0;g.x=18;g.y=H/2;const s=tutOpp(3,230,rnd(200,300));take(s);shootAt(s,-10,rnd(0,1)<.5?GT+14:GB-14,0.75,false)}return 0}},
+  {t:'Keeper dive',d:()=>`A red attacker will dribble in, wind up (watch the pink bar), then shoot. When the big ${K('F')} above your keeper turns green and says DIVE NOW, press ${K('F')}. Get a GOOD or PERFECT dive to finish.`,
+   set(){tutLayout();tutMe(400,80);M.diveCd[0]=0;T_.ph='wait';T_.next=0.8;T_.charge=0},
+   tick(dt){const g=keeper(0);if(g.dive>0&&g.diveQ>0.45)T_.ok=1;if(T_.ok){T_.charge=0;return 1}
+     const s=M.ents.find(q=>q.team===1&&q.slot===3);
+     if(T_.ph==='wait'){T_.next-=dt;if(T_.next<=0){
+         // spawn far out and dribble in so there's time to watch the play develop
+         M.diveCd[0]=0;g.recover=0;g.stun=0;g.dive=0;g.x=18;g.y=H/2;
+         tutOpp(3,440,rnd(170,330));tutGive(s);s.fx=-1;s.fy=0;s.tutTo=[255,clamp(s.y,190,310),0.7];T_.ph='run';T_.t=0}}
+     else if(T_.ph==='run'){T_.t+=dt;
+       if(M.ball.owner!==s){T_.ph='wait';T_.next=0.6}
+       else if(s.x<=262||T_.t>3){s.tutTo=null;s.vx=s.vy=0;s.fx=-1;s.fy=0;T_.ph='charge';T_.t=0;pop(s.x,s.y-46,'WINDING UP…','#ff5c8c')}}
+     else if(T_.ph==='charge'){T_.t+=dt;T_.charge=Math.min(1,T_.t/1.1);
+       if(T_.t>=1.1){T_.charge=0;shootAt(s,-10,rnd(0,1)<.5?GT+14:GB-14,0.75,false);T_.ph='flight';T_.next=2.4}}
+     else if(T_.ph==='flight'){T_.next-=dt;if(T_.next<=0){T_.ph='wait';T_.next=0.7}}
+     return 0}},
 ];
 let TUT_I=0,T_={};
 function tutLayout(){
