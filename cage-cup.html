@@ -144,6 +144,9 @@ body.mobplay #mob{display:block;position:absolute;inset:0;pointer-events:none;z-
 #mSheet .mform.on{border-color:#ffb627;color:#ffb627}
 #mSheet .mform small{display:block;font:500 11px var(--body);color:var(--muted);text-transform:none}
 #mSheet .endrow{margin:0}
+#mSheet .mtip{margin:0;font-size:13px;color:var(--muted);max-width:52ch}
+#mSheet .mtip b{color:var(--chalk)}
+.menutip{font-size:13px;color:var(--muted);margin:0}
 #mSheet .endrow .row{justify-content:flex-start}
 body.mob .small-note{display:none}
 body.mobplay #mRotate{position:fixed;inset:0;z-index:60;background:#081118;color:var(--chalk);align-items:center;justify-content:center;flex-direction:column;gap:8px;font:900 22px var(--display);text-transform:uppercase;text-align:center;padding:24px}
@@ -360,7 +363,7 @@ details.hint summary{cursor:pointer;font-family:var(--display);font-weight:800;f
         </section>
       </div>
       <div id="mob" aria-label="Touch controls">
-        <div class="mtop"><span id="mScore">0–0</span><span class="mclock" id="mClock">0'</span><button id="mMenu" aria-label="Menu">☰</button></div>
+        <div class="mtop"><span id="mScore">0–0</span><span class="mclock" id="mClock">0'</span><button id="mFull" aria-label="Full screen" hidden>⛶</button><button id="mMenu" aria-label="Menu">☰</button></div>
         <div id="mZone"></div>
         <div id="mStick"><span class="mspr">SPRINT</span><i id="mKnob"></i></div>
         <button class="mb" id="mP" aria-label="Set play"><svg viewBox="0 0 70 70"><circle cx="35" cy="35" r="32" id="mPring"/></svg>Play<small id="mPmsg"></small></button>
@@ -373,6 +376,7 @@ details.hint summary{cursor:pointer;font-family:var(--display);font-weight:800;f
           <h3>Menu</h3>
           <span class="label">Formation (switches in 10s)</span>
           <div class="row" id="mForms"></div>
+          <p class="mtip" id="mTip" hidden></p>
           <div class="row"><button class="btn ghost small" id="mNames">Names: off</button><button class="btn small" id="mClose">Back to match</button></div>
           <div id="mEnd"></div>
         </div></div>
@@ -2131,9 +2135,16 @@ function mobGoalAim(){
   return[gx,k&&k.y<H/2?GB-12:GT+12];
 }
 function mobAimPoint(dx,dy,dist){const c=mobC();return[clamp(c.x+dx*dist,-20,W+20),clamp(c.y+dy*dist,-20,H+20)]}
+const IOS=/iP(hone|od|ad)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+const STANDALONE=(()=>{try{return navigator.standalone||matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches}catch(e){return false}})();
+const CAN_FULL=!/iPhone|iPod/.test(navigator.userAgent)&&!!(document.documentElement.requestFullscreen&&document.fullscreenEnabled); // iPhone Safari has no page full screen
+function goFull(){
+  // Android/Chrome: real full screen (must come from a tap). iPhone browsers can't do this; Add to Home Screen instead.
+  try{const d=document.documentElement;if(CAN_FULL&&!document.fullscreenElement)d.requestFullscreen({navigationUI:'hide'}).then(()=>screen.orientation&&screen.orientation.lock&&screen.orientation.lock('landscape').catch(()=>{})).catch(()=>{})}catch(e){}
+}
 function mobSetPlay(on){
   document.body.classList.toggle('mobplay',on);
-  if(on){try{const d=document.documentElement;if(!document.fullscreenElement&&d.requestFullscreen)d.requestFullscreen({navigationUI:'hide'}).then(()=>screen.orientation&&screen.orientation.lock&&screen.orientation.lock('landscape').catch(()=>{})).catch(()=>{})}catch(e){}}
+  if(on)goFull();
   else{$('#mSheet').classList.remove('open');try{if(document.fullscreenElement)document.exitFullscreen().catch(()=>{})}catch(e){}}
   requestAnimationFrame(resize);setTimeout(resize,250);
 }
@@ -2143,6 +2154,15 @@ function mobSetPlay(on){
   const root=$('#mob');
   root.addEventListener('touchstart',e=>{if(!e.target.closest('#mSheet'))e.preventDefault()},{passive:false});
   root.addEventListener('contextmenu',e=>e.preventDefault());
+  // any tap during a match re-enters full screen if the browser dropped out of it (e.g. online kickoff, which isn't a tap)
+  root.addEventListener('pointerdown',()=>{if(document.body.classList.contains('mobplay')&&!document.fullscreenElement)goFull()},true);
+  const fb=$('#mFull');fb.hidden=!CAN_FULL;fb.addEventListener('pointerdown',e=>{e.preventDefault();goFull()});
+  document.addEventListener('fullscreenchange',()=>{fb.hidden=!CAN_FULL||!!document.fullscreenElement;setTimeout(resize,200)});
+  if(!CAN_FULL&&!STANDALONE&&window.CAGE_SERVER){
+    const tip=IOS?'<b>Play without the browser bars:</b> tap the Share button in Safari, then <b>Add to Home Screen</b>. Open Cage Cup from your home screen and it runs full screen.':'<b>Play without the browser bars:</b> open your browser menu and choose <b>Add to Home screen</b> or <b>Install app</b>.';
+    $('#mTip').innerHTML=tip;$('#mTip').hidden=false;
+    const mt=document.createElement('p');mt.className='menutip';mt.innerHTML=tip;$('#modeRow').after(mt);
+  }
   // --- stick ---
   const zone=$('#mZone'),stk=$('#mStick'),kn=$('#mKnob');let sid=null,ox=0,oy=0;
   const R=50;

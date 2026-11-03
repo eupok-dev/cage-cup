@@ -24,6 +24,11 @@ function page() {
   const body = readGame().replace('<script>', '<script>window.CAGE_SERVER=1;\n');
   return '<!doctype html><html lang="en"><head><meta charset="utf-8">' +
     '<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">' +
+    // "Add to Home Screen" opens the game full screen, with no browser bars
+    '<meta name="theme-color" content="#0d1820"><meta name="mobile-web-app-capable" content="yes">' +
+    '<meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">' +
+    '<meta name="apple-mobile-web-app-title" content="Cage Cup"><link rel="manifest" href="/manifest.webmanifest">' +
+    '<link rel="apple-touch-icon" href="/icon-180.png"><link rel="icon" href="/icon-192.png">' +
     '</head><body>' + body + '</body></html>';
 }
 let engineCache = null;
@@ -52,8 +57,20 @@ function baseUrl(req) {
   return `${proto}://${host}`;
 }
 
+const MANIFEST = JSON.stringify({
+  name: 'Cage Cup', short_name: 'Cage Cup', start_url: '/', scope: '/', display: 'fullscreen', orientation: 'landscape',
+  background_color: '#0d1820', theme_color: '#0d1820',
+  icons: [{ src: '/icon-192.png', sizes: '192x192', type: 'image/png' }, { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' }]
+});
 const server = http.createServer((req, res) => {
   const url = req.url || '/';
+  if (req.method === 'GET' && url === '/manifest.webmanifest') { res.writeHead(200, { 'Content-Type': 'application/manifest+json' }); res.end(MANIFEST); return; }
+  const ic = req.method === 'GET' && /^\/icon-(180|192|512)\.png$/.exec(url);
+  if (ic) {
+    try { const buf = fs.readFileSync(path.join(__dirname, `icon-${ic[1]}.png`)); res.writeHead(200, { 'Content-Type': 'image/png', 'Cache-Control': 'max-age=86400' }); res.end(buf); }
+    catch (e) { res.writeHead(404); res.end(); }
+    return;
+  }
   if (req.method === 'GET' && url.startsWith('/healthz')) { res.writeHead(200, { 'Content-Type': 'text/plain' }); res.end('ok'); return; }
   if (req.method === 'GET' && (url === '/' || url.startsWith('/?') || url.startsWith('/index.html'))) {
     try { res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }); res.end(page()); }
