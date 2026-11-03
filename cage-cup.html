@@ -2306,6 +2306,18 @@ function mobTick(){
   $('#mClock').textContent=M.golden?'Golden goal':Math.min(90,Math.floor(M.t/M.dur*90))+"'";
   $('#mForms').querySelectorAll('.mform').forEach(bt=>bt.classList.toggle('on',+bt.dataset.f===M.form[L]));
 }
+// home-screen apps on iPhone stay open in the background and keep showing an old copy of the game.
+// When the game comes back to the front (or every minute on the menu), check the server for a newer version and reload.
+(function autoUpdate(){
+  if(!window.CAGE_SERVER||!window.CAGE_VER)return;
+  let busy=false,pending=false;
+  const safe=()=>stage!=='match'&&stage!=='lobby';
+  const check=()=>{if(busy)return;busy=true;fetch('/version',{cache:'no-store'}).then(r=>r.ok?r.text():'').then(v=>{v=v.trim();if(v&&v!==window.CAGE_VER){pending=true;if(safe())location.reload()}}).catch(()=>{}).finally(()=>busy=false)};
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')check()});
+  window.addEventListener('pageshow',e=>{if(e.persisted)check()});
+  setInterval(()=>{if(pending&&safe())location.reload();else if(safe())check()},60000);
+  const tm=toMenu;toMenu=function(){tm.apply(this,arguments);if(pending)location.reload()};
+})();
 startDemo();setStage('menu');
 (function autoJoin(){
   if(!window.CAGE_SERVER)return;

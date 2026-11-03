@@ -20,8 +20,11 @@ const SIM_LAG = Number(process.env.SIM_LAG_MS) || 0;
 const SIM_JIT = Number(process.env.SIM_JITTER_MS) || 0;
 
 function readGame() { return fs.readFileSync(GAME, 'utf8'); }
+function gameVersion() { return crypto.createHash('sha1').update(readGame()).digest('hex').slice(0, 12); }
 function page() {
-  const body = readGame().replace('<script>', '<script>window.CAGE_SERVER=1;\n');
+  const html = readGame();
+  const ver = crypto.createHash('sha1').update(html).digest('hex').slice(0, 12);
+  const body = html.replace('<script>', `<script>window.CAGE_SERVER=1;window.CAGE_VER='${ver}';\n`);
   return '<!doctype html><html lang="en"><head><meta charset="utf-8">' +
     '<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">' +
     // "Add to Home Screen" opens the game full screen, with no browser bars
@@ -64,6 +67,10 @@ const MANIFEST = JSON.stringify({
 });
 const server = http.createServer((req, res) => {
   const url = req.url || '/';
+  if (req.method === 'GET' && url.startsWith('/version')) {
+    try { res.writeHead(200, { 'Content-Type': 'text/plain', 'Cache-Control': 'no-store' }); res.end(gameVersion()); } catch (e) { res.writeHead(500); res.end(); }
+    return;
+  }
   if (req.method === 'GET' && url === '/manifest.webmanifest') { res.writeHead(200, { 'Content-Type': 'application/manifest+json' }); res.end(MANIFEST); return; }
   const ic = req.method === 'GET' && /^\/icon-(180|192|512)\.png$/.exec(url);
   if (ic) {
