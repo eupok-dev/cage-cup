@@ -1,6 +1,6 @@
 // Cage Cup multiplayer server.
-// Serves the game and relays messages between two players in each room.
-// No installs needed: uses only Node's built-in modules (Node 18+).
+// Serves the game, hosts rooms, and RUNS each online match itself so both players
+// get the same delay. No installs needed: only Node's built-in modules (Node 18+).
 //   Local:   node server.js            (optional: PORT=9000 node server.js)
 //   Hosted:  the host sets PORT; start command is "node server.js".
 const http = require('http');
@@ -8,21 +8,32 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const vm = require('vm');
 
 const PORT = Number(process.env.PORT) || 8080;
 const GAME = path.join(__dirname, 'cage-cup.html');
 const MAX_ROOMS = 500;
-const SIM_LAG = Number(process.env.SIM_LAG_MS) || 0; // testing: fake one-way network delay
-const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O or 1/I
+const TICK = 1 / 60, SNAP_EVERY = 2; // simulate at 60 Hz, send 30 snapshots a second
+const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+// testing only: fake network delay in both directions
+const SIM_LAG = Number(process.env.SIM_LAG_MS) || 0;
+const SIM_JIT = Number(process.env.SIM_JITTER_MS) || 0;
 
-let pageCache = null;
+function readGame() { return fs.readFileSync(GAME, 'utf8'); }
 function page() {
-  if (pageCache && process.env.NODE_ENV === 'production') return pageCache;
-  const body = fs.readFileSync(GAME, 'utf8').replace('<script>', '<script>window.CAGE_SERVER=1;\n');
-  pageCache = '<!doctype html><html lang="en"><head><meta charset="utf-8">' +
+  const body = readGame().replace('<script>', '<script>window.CAGE_SERVER=1;\n');
+  return '<!doctype html><html lang="en"><head><meta charset="utf-8">' +
     '<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">' +
     '</head><body>' + body + '</body></html>';
-  return pageCache;
+}
+let engineCache = null;
+function engineSource() {
+  const html = readGame();
+  const i = html.indexOf('// ===ENGINE START==='), j = html.indexOf('// ===ENGINE END===');
+  if (i < 0 || j < 0) throw new Error('engine markers missing in cage-cup.html');
+  const src = html.slice(i, j);
+  if (!engineCache || engineCache.src !== src) engineCache = { src, script: new vm.Script(src + '\n;var __api={newMatch,update,snap,applyRemoteInput,makeStarTeam,getM:()=>M,give:e=>take(e)};', { filename: 'engine.js' }) };
+  return engineCache.script;
 }
 
 function lanUrls() {
@@ -34,40 +45,26 @@ function lanUrls() {
   }
   return out;
 }
-
-// Public base URL for share links. Uses the address the player connected through;
-// on localhost it swaps in this computer's Wi-Fi address so friends can reach it.
 function baseUrl(req) {
   const host = req.headers['x-forwarded-host'] || req.headers.host || `localhost:${PORT}`;
-  const proto = (req.headers['x-forwarded-proto'] || '').split(',')[0] || (req.socket.encrypted ? 'https' : 'http');
-  if (/^(localhost|127\.0\.0\.1|\[::1\])(:|$)/.test(host)) {
-    const lan = lanUrls()[0];
-    if (lan) return lan;
-  }
+  const proto = (req.headers['x-forwarded-proto'] || '').split(',')[0] || 'http';
+  if (/^(localhost|127\.0\.0\.1|\[::1\])(:|$)/.test(host)) { const lan = lanUrls()[0]; if (lan) return lan; }
   return `${proto}://${host}`;
 }
 
 const server = http.createServer((req, res) => {
   const url = req.url || '/';
-  if (req.method === 'GET' && url.startsWith('/healthz')) {
-    res.writeHead(200, { 'Content-Type': 'text/plain' }); res.end('ok'); return;
-  }
+  if (req.method === 'GET' && url.startsWith('/healthz')) { res.writeHead(200, { 'Content-Type': 'text/plain' }); res.end('ok'); return; }
   if (req.method === 'GET' && (url === '/' || url.startsWith('/?') || url.startsWith('/index.html'))) {
-    try {
-      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
-      res.end(page());
-    } catch (e) {
-      res.writeHead(500, { 'Content-Type': 'text/plain' });
-      res.end('Could not read cage-cup.html next to server.js');
-    }
+    try { res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }); res.end(page()); }
+    catch (e) { res.writeHead(500, { 'Content-Type': 'text/plain' }); res.end('Could not read cage-cup.html next to server.js'); }
     return;
   }
-  res.writeHead(404, { 'Content-Type': 'text/plain' });
-  res.end('Not found');
+  res.writeHead(404, { 'Content-Type': 'text/plain' }); res.end('Not found');
 });
 
-// ---- minimal WebSocket (RFC 6455, text frames) ----
-function sendFrame(c, data, op = 1) {
+// ---- minimal WebSocket (RFC 6455) ----
+function rawFrame(c, data, op = 1) {
   if (!c || c.sock.destroyed) return;
   const p = Buffer.isBuffer(data) ? data : Buffer.from(data);
   let h;
@@ -76,10 +73,16 @@ function sendFrame(c, data, op = 1) {
   else { h = Buffer.alloc(10); h[0] = 0x80 | op; h[1] = 127; h.writeBigUInt64BE(BigInt(p.length), 2); }
   c.sock.write(Buffer.concat([h, p]));
 }
-const send = (c, obj) => sendFrame(c, JSON.stringify(obj));
+function delayed(c, fn) {
+  if (!SIM_LAG) return fn();
+  const at = Math.max(Date.now() + SIM_LAG + Math.random() * SIM_JIT, c.lastAt || 0);
+  c.lastAt = at; setTimeout(fn, at - Date.now());
+}
+const sendRaw = (c, str) => delayed(c, () => rawFrame(c, str));
+const send = (c, obj) => sendRaw(c, JSON.stringify(obj));
 
 // ---- rooms ----
-const rooms = new Map(); // code -> { host, guest }
+const rooms = new Map();
 function newCode() {
   for (let n = 0; n < 50; n++) {
     let code = '';
@@ -89,6 +92,61 @@ function newCode() {
   return null;
 }
 const other = c => (c.room ? (c.role === 'host' ? c.room.guest : c.room.host) : null);
+const teamOf = c => (c.role === 'host' ? 0 : 1);
+
+function startMatch(room) {
+  let api;
+  try {
+    const ctx = vm.createContext({ console, document: { querySelector: () => null } });
+    engineSource().runInContext(ctx);
+    api = ctx.__api;
+  } catch (e) { console.error('  could not start the match engine:', e.message); return; }
+  const teams = [api.makeStarTeam('barca'), api.makeStarTeam('madrid')];
+  const match = { api, over: null, tick: 0, acc: 0, last: Date.now() };
+  api.newMatch(teams[0], teams[1], { kits: ['barca', 'madrid'], human: [true, true], local: 0, names: ['Barcelona', 'Real Madrid'], dur: 600, countdown: 3, onEnd: sc => { match.over = sc; } });
+  room.match = match;
+  room.host.ready = room.guest.ready = false;
+  for (const c of [room.host, room.guest]) send(c, { t: 'start', teams });
+  match.timer = setInterval(() => {
+    const now = Date.now();
+    match.acc += Math.min(0.25, (now - match.last) / 1000); match.last = now;
+    while (match.acc >= TICK) {
+      match.acc -= TICK;
+      api.update(TICK);
+      match.tick++;
+      if (match.over || match.tick % SNAP_EVERY === 0) {
+        const s = JSON.stringify(api.snap());
+        if (room.host) sendRaw(room.host, s);
+        if (room.guest) sendRaw(room.guest, s);
+      }
+      if (match.over) {
+        for (const c of [room.host, room.guest]) if (c) send(c, { t: 'over', sc: match.over });
+        stopMatch(room); return;
+      }
+    }
+  }, 1000 / 120);
+  console.log(`  [${room.code}] match started`);
+}
+function stopMatch(room) {
+  if (room.match) { clearInterval(room.match.timer); room.match = null; }
+}
+
+function onMessage(c, text) {
+  let m; try { m = JSON.parse(text); } catch (e) { return; }
+  const room = c.room; if (!room || !m || typeof m.t !== 'string') return;
+  if (m.t === 'i') { if (room.match) room.match.api.applyRemoteInput(teamOf(c), m); return; }
+  if (m.t === 'test' && process.env.CAGE_TEST && room.match) { // automated tests only
+    const T = teamOf(c), ctx = room.match.api.getM();
+    const e = ctx.ents.find(q => q.team === T && q.slot === 3); e.x = T ? 450 : 350; e.y = 250; e.vx = e.vy = 0; e.fx = T ? -1 : 1; e.fy = 0;
+    for (const q of ctx.ents) if (q.team !== T && !q.gk) { q.x = T ? 760 : 40; q.y = 40 + q.slot * 30; }
+    room.match.api.give(e); e.immune = 99; return;
+  }
+  if (m.t === 'ready') {
+    c.ready = !!m.v;
+    const peer = other(c); if (peer) send(peer, { t: 'ready', v: c.ready });
+    if (!room.match && room.host && room.guest && room.host.ready && room.guest.ready) startMatch(room);
+  }
+}
 
 function parse(c) {
   while (c.buf.length >= 2) {
@@ -101,19 +159,12 @@ function parse(c) {
     const need = off + (masked ? 4 : 0) + len;
     if (c.buf.length < need) return;
     let payload = Buffer.from(c.buf.subarray(off + (masked ? 4 : 0), need));
-    if (masked) { const m = c.buf.subarray(off, off + 4); for (let i = 0; i < payload.length; i++) payload[i] ^= m[i & 3]; }
+    if (masked) { const mk = c.buf.subarray(off, off + 4); for (let i = 0; i < payload.length; i++) payload[i] ^= mk[i & 3]; }
     c.buf = c.buf.subarray(need);
     c.alive = true;
     if (op === 8) { c.sock.end(); return; }
-    if (op === 9) { sendFrame(c, payload, 10); continue; }
-    if (op === 10) continue; // pong
-    if (op === 1) {
-      const peer = other(c);
-      if (peer) {
-        if (SIM_LAG) setTimeout(() => sendFrame(peer, payload), SIM_LAG + Math.random() * SIM_LAG * 0.5); // testing only
-        else sendFrame(peer, payload);
-      }
-    }
+    if (op === 9) { rawFrame(c, payload, 10); continue; }
+    if (op === 1) { const text = payload.toString('utf8'); delayed(c.inQ, () => onMessage(c, text)); }
   }
 }
 
@@ -122,7 +173,7 @@ function join(c, params, req) {
   let code, room;
   if (params.get('create')) {
     if (rooms.size >= MAX_ROOMS) { send(c, { t: 'hello', role: 'full' }); setTimeout(() => c.sock.end(), 200); return; }
-    code = newCode(); room = { host: null, guest: null, code };
+    code = newCode(); room = { host: null, guest: null, code, match: null };
     rooms.set(code, room);
   } else {
     room = rooms.get(want); code = want;
@@ -130,52 +181,50 @@ function join(c, params, req) {
   }
   const role = !room.host ? 'host' : !room.guest ? 'guest' : 'full';
   if (role === 'full') { send(c, { t: 'hello', role: 'full' }); setTimeout(() => c.sock.end(), 200); return; }
-  c.role = role; c.room = room; room[role] = c;
+  c.role = role; c.room = room; c.ready = false; room[role] = c;
   send(c, { t: 'hello', role, room: code, link: `${baseUrl(req)}/?room=${code}`, urls: lanUrls() });
   console.log(`  [${code}] ${role} joined (${rooms.size} room${rooms.size === 1 ? '' : 's'} open)`);
   const peer = other(c);
-  if (peer) { send(c, { t: 'peer', present: true }); send(peer, { t: 'peer', present: true }); }
+  if (peer) { send(c, { t: 'peer', present: true }); send(peer, { t: 'peer', present: true }); if (peer.ready) send(c, { t: 'ready', v: true }); }
 }
 function leave(c) {
   if (c.gone) return; c.gone = true;
   const room = c.room; if (!room) return;
   if (room[c.role] === c) room[c.role] = null;
+  stopMatch(room);
   const peer = other(c);
-  if (peer) send(peer, { t: 'peer', present: false });
+  if (peer) { peer.ready = false; send(peer, { t: 'peer', present: false }); }
   if (!room.host && !room.guest) rooms.delete(room.code);
   console.log(`  [${room.code}] ${c.role} left`);
 }
 
+const clients = new Set();
 server.on('upgrade', (req, sock) => {
   let params;
   try { const u = new URL(req.url, 'http://x'); if (u.pathname !== '/ws') throw 0; params = u.searchParams; }
   catch (e) { sock.destroy(); return; }
   if (!req.headers['sec-websocket-key']) { sock.destroy(); return; }
-  const accept = crypto.createHash('sha1')
-    .update(req.headers['sec-websocket-key'] + '258EAFA5-E914-47DA-95CA-C5AB0DC85B11').digest('base64');
-  sock.write('HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n' +
-    `Sec-WebSocket-Accept: ${accept}\r\n\r\n`);
+  const accept = crypto.createHash('sha1').update(req.headers['sec-websocket-key'] + '258EAFA5-E914-47DA-95CA-C5AB0DC85B11').digest('base64');
+  sock.write('HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n' + `Sec-WebSocket-Accept: ${accept}\r\n\r\n`);
   sock.setNoDelay(true);
-  const c = { sock, buf: Buffer.alloc(0), role: null, room: null, alive: true };
+  const c = { sock, buf: Buffer.alloc(0), role: null, room: null, alive: true, inQ: { lastAt: 0 } };
   clients.add(c);
   join(c, params, req);
   sock.on('data', d => { c.buf = Buffer.concat([c.buf, d]); try { parse(c); } catch (e) { sock.destroy(); } });
   const bye = () => { clients.delete(c); leave(c); };
-  sock.on('close', bye);
-  sock.on('error', bye);
+  sock.on('close', bye); sock.on('error', bye);
 });
 
-// Keep-alive: ping every 25s so hosting proxies don't drop idle connections; drop dead ones.
-const clients = new Set();
+// keep-alive ping so hosting proxies don't drop idle connections
 setInterval(() => {
   for (const c of clients) {
     if (!c.alive) { c.sock.destroy(); continue; }
-    c.alive = false;
-    sendFrame(c, Buffer.alloc(0), 9);
+    c.alive = false; rawFrame(c, Buffer.alloc(0), 9);
   }
 }, 25000).unref();
 
 server.listen(PORT, '0.0.0.0', () => {
+  try { engineSource(); } catch (e) { console.error('  ' + e.message); }
   console.log('\n  Cage Cup server is running.\n');
   console.log(`  Open:  http://localhost:${PORT}`);
   const urls = lanUrls();

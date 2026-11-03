@@ -345,6 +345,7 @@ details.hint summary{cursor:pointer;font-family:var(--display);font-weight:800;f
   </main>
 </div>
 <script>
+// ===ENGINE START===
 // ---------- utils ----------
 const $=s=>document.querySelector(s);
 const rnd=(a,b)=>a+Math.random()*(b-a);
@@ -1105,13 +1106,36 @@ function update(dt){
   }
 }
 
+// ---- network helpers shared with the server ----
+function snap(){
+  const b=M.ball;
+  return{t:'s',
+    e:M.ents.map(e=>[r1(e.x),r1(e.y),r1(e.vx),r1(e.vy),r1(e.fx),r1(e.fy),r1(e.stun),r1(e.slide),r1(e.sdx),r1(e.sdy),r1(e.dive),r1(e.ddx),r1(e.ddy),r1(e.burst),r1(e.stam),r1(e.recover),r1(e.skill)]),
+    b:[r1(b.x),r1(b.y),r1(b.vx),r1(b.vy),b.owner?b.owner.i:-1,b.kind||'',r1(b.loft||0),b.power?1:0,b.lastTeam,b.target?b.target.i:-1],
+    sc:M.score,tm:r1(M.t),g:M.golden?1:0,fr:r1(M.freeze),cd:r1(M.countdown),bn:[M.banner,r1(M.bannerT),M.bannerTeam],
+    pops:M.pops.map(p=>[r1(p.x),r1(p.y),p.txt,p.col,r1(p.t)]),
+    ctrl:M.ctrl.map(c=>c?c.i:-1),
+    play:M.play.map(P=>P?[P.phase,P.passer.i,P.mate.i,P.spot?[r1(P.spot[0]),r1(P.spot[1])]:null,r1(P.window)]:0),
+    pcd:M.playCd.map(r1),w:M.warp.map(r1),wcd:M.warpCd.map(r1),dcd:M.diveCd.map(r1),form:M.form,
+    fp:M.formPend.map(f=>f?[f.f,r1(f.t)]:0),pr:M.press.map(p=>p?[p.o.i,r1(p.t)]:0),acks:[M.inp[0].seq||0,M.inp[1].seq||0]};
+}
+function applyRemoteInput(T,m){
+  const I=M.inp[T];
+  if(m.q)I.seq=m.q;
+  I.keys=new Set(m.k||[]);
+  const mm=m.m||[];I.mx=mm[0]??I.mx;I.my=mm[1]??I.my;I.over=!!mm[2];I.lmb=!!mm[3];I.rmb=!!mm[4];
+  const j=m.j||[];I.jx=j[0]||0;I.jy=j[1]||0;I.js=!!j[2];
+  for(const a of (m.a||[]))if(a&&typeof a.a==='string')M.acts[T].push(a);
+}
+// ===ENGINE END===
+
 // ---------- local input ----------
 const LI=newInput();
 let mode=null,stage='menu';
 const live=()=>!!(M&&!M.demo&&!M.over);
 function act(a){
   if(!live())return;
-  if(M.guest)net.outbox.push(a);else M.acts[M.local].push(a);
+  if(M.guest){predictKick(a);net.outbox.push(a)}else M.acts[M.local].push(a);
 }
 const chargeP=()=>LI.lmb?Math.min(1,(performance.now()-LI.lt)/1000):0;
 
@@ -1502,40 +1526,22 @@ function onNet(m){
         if(mode==='pvp'&&(stage==='match'||stage==='result')){startDemo();setStage('lobby');net.status='Your opponent left.'}
       }else{if(!was)net.status='';nsend({t:'ready',v:net.myReady})}
       renderLobby();break}
-    case 'ready':net.peerReady=!!m.v;renderLobby();maybeStart();break;
-    case 'start':if(net.role==='guest')beginPvp(m.teams);break;
-    case 's':if(net.role==='guest'&&M&&M.guest&&!M.over)recvSnap(m);break;
-    case 'i':if(net.role==='host'&&M&&!M.demo&&!M.over&&mode==='pvp')applyInput(m);break;
-    case 'over':if(net.role==='guest'&&M&&M.guest){M.score=m.sc;M.over=true;setTimeout(()=>showResult(m.sc),300)}break;
+    case 'ready':net.peerReady=!!m.v;renderLobby();break;
+    case 'start':beginPvp(m.teams);break;
+    case 's':if(M&&M.guest&&!M.over)recvSnap(m);break;
+    case 'over':if(M&&M.guest){M.score=m.sc;M.over=true;setTimeout(()=>showResult(m.sc),300)}break;
   }
 }
-function maybeStart(){
-  if(net.role==='host'&&net.peer&&net.myReady&&net.peerReady&&stage==='lobby'){
-    const teams=[makeStarTeam('barca'),makeStarTeam('madrid')];
-    nsend({t:'start',teams});beginPvp(teams);
-  }
-}
+function maybeStart(){}
 function beginPvp(teams){
   net.myReady=net.peerReady=false;
   const local=net.role==='host'?0:1;
   M=newMatch(teams[0],teams[1],{kits:['barca','madrid'],human:[true,true],local,names:['Barcelona','Real Madrid'],dur:600,countdown:3,
-    onEnd:sc=>{nsend(snap());nsend({t:'over',sc});setTimeout(()=>showResult(sc),300)}});
+    onEnd:()=>{}});
   M.inp[local]=LI;
-  if(local===1){M.guest=true;G.buf=[];G.hist=[];G.pred=null;G.seq=0}
+  M.guest=true;G.buf=[];G.hist=[];G.pred=null;G.seq=0;G.kick=null;
   net.outbox=[];
   setStage('match');header();
-}
-function snap(){
-  const b=M.ball;
-  return{t:'s',
-    e:M.ents.map(e=>[r1(e.x),r1(e.y),r1(e.vx),r1(e.vy),r1(e.fx),r1(e.fy),r1(e.stun),r1(e.slide),r1(e.sdx),r1(e.sdy),r1(e.dive),r1(e.ddx),r1(e.ddy),r1(e.burst),r1(e.stam),r1(e.recover),r1(e.skill)]),
-    b:[r1(b.x),r1(b.y),r1(b.vx),r1(b.vy),b.owner?b.owner.i:-1,b.kind||'',r1(b.loft||0),b.power?1:0,b.lastTeam,b.target?b.target.i:-1],
-    sc:M.score,tm:r1(M.t),g:M.golden?1:0,fr:r1(M.freeze),cd:r1(M.countdown),bn:[M.banner,r1(M.bannerT),M.bannerTeam],
-    pops:M.pops.map(p=>[r1(p.x),r1(p.y),p.txt,p.col,r1(p.t)]),
-    ctrl:M.ctrl.map(c=>c?c.i:-1),
-    play:M.play.map(P=>P?[P.phase,P.passer.i,P.mate.i,P.spot?[r1(P.spot[0]),r1(P.spot[1])]:null,r1(P.window)]:0),
-    pcd:M.playCd.map(r1),w:M.warp.map(r1),wcd:M.warpCd.map(r1),dcd:M.diveCd.map(r1),form:M.form,
-    fp:M.formPend.map(f=>f?[f.f,r1(f.t)]:0),pr:M.press.map(p=>p?[p.o.i,r1(p.t)]:0),ack:M.inp[1].seq||0};
 }
 function applySnap(s){
   M.ents.forEach((e,i)=>{const a=s.e[i];if(!a)return;[e.x,e.y,e.vx,e.vy,e.fx,e.fy,e.stun,e.slide,e.sdx,e.sdy,e.dive,e.ddx,e.ddy,e.burst,e.stam,e.recover,e.skill]=a});
@@ -1551,24 +1557,28 @@ function applySnap(s){
   net.snapAt=performance.now();
 }
 // ---- guest smoothing: interpolate everyone ~100ms behind, predict your own player ----
-const INTERP_MS=100;
-const G={buf:[],seq:0,hist:[],pred:null,corrX:0,corrY:0};
+const INTERP_MS=80;
+const G={buf:[],seq:0,hist:[],pred:null,corrX:0,corrY:0,sent:new Map(),rtt:0,ownBall:false};
 function recvSnap(s){
   G.buf.push({at:performance.now(),s});
   if(G.buf.length>40)G.buf.shift();
   net.snapAt=performance.now();
   // reconcile our predicted player against the host's position at the last input it processed
   const P=G.pred;
-  if(P&&s.ctrl[M.local]===P.i&&s.ack){
-    const h=G.hist.find(q=>q.q===s.ack);
+  const ack=s.acks?s.acks[M.local]:s.ack;
+  if(ack&&G.sent.has(ack)){const smp=performance.now()-G.sent.get(ack);G.rtt=G.rtt?G.rtt*0.9+smp*0.1:smp;for(const q of G.sent.keys()){if(q<=ack)G.sent.delete(q);else break}}
+  if(P&&s.ctrl[M.local]===P.i&&ack){
+    const h=G.hist.find(q=>q.q===ack);
     if(h){const a=s.e[P.i];G.corrX=a[0]-h.x;G.corrY=a[1]-h.y}
-    G.hist=G.hist.filter(q=>q.q>s.ack);
+    G.hist=G.hist.filter(q=>q.q>ack);
   }
 }
 function lerpAngle(ax,ay,bx,by,f){const a=Math.atan2(ay,ax),b=Math.atan2(by,bx);const d=Math.atan2(Math.sin(b-a),Math.cos(b-a));const r=a+d*f;return[Math.cos(r),Math.sin(r)]}
 function guestTick(dt){
   if(!G.buf.length)return;
   guestStep(dt);
+  ballAhead();
+  kickAhead();
   smoothDisplay(dt);
 }
 // Hides discontinuities (control switches, passes, late packets) by gliding instead of teleporting
@@ -1584,6 +1594,49 @@ function smoothDisplay(dt){
     e.ox=Math.abs(ox)<0.05?0:ox;e.oy=Math.abs(oy)<0.05?0:oy;
     e.x=dx;e.y=dy;e.lx=dx;e.ly=dy;
   }
+}
+function ballAhead(){
+  // free ball: show where it is now (newest packet + travel since), not 80 ms ago
+  const last=G.buf[G.buf.length-1],B=last.s.b,b=M.ball;
+  if(B[4]>=0||B[8]!==M.local)G.ownBall=false;
+  if(B[4]>=0){const o=M.ents[B[4]];if(o){b.owner=o;b.x=clamp(o.x+o.fx*10,3,W-3);b.y=clamp(o.y+o.fy*10,3,H-3)}return}
+  if(M.freeze>0||M.countdown>0)return;
+  // after our own kick, run the ball ahead by the round trip so it stays on the path we already showed
+  const extra=G.ownBall?Math.min(0.3,G.rtt/1000):0;
+  const t=Math.min(0.15,(performance.now()-last.at)/1000)+extra;
+  const k=-Math.log(B[5]==='shot'?0.65:0.42),f=(1-Math.exp(-k*t))/k;
+  b.owner=null;b.x=clamp(B[0]+B[2]*f,3,W-3);b.y=clamp(B[1]+B[3]*f,3,H-3);b.vx=B[2];b.vy=B[3];
+}
+function predictKick(a){
+  if(!M||!M.guest||M.over)return;
+  const L=M.local,c=M.ctrl[L],b=M.ball;
+  if(!c||b.owner!==c||c.stun>0)return;
+  const P=M.play[L];if(P&&P.phase!=='setup')return;
+  let tx,ty,sp,kind;
+  if(a.a==='pass'&&!a.mod){
+    const [ix,iy]=inVec(LI);const[dx,dy]=aimDir(c,ix,iy,LI);const ch=passChoice(c,dx,dy);if(!ch)return;
+    tx=ch.t.x;ty=ch.t.y;const d=hyp(tx-c.x,ty-c.y);sp=clamp(d*1.25+230,400,560+c.p.pass*14);kind='pass';
+  }else if(a.a==='mshot'||(a.a==='shoot'&&LI.over)){
+    tx=a.a==='mshot'?a.x:LI.mx;ty=a.a==='mshot'?a.y:LI.my;const p=a.a==='mshot'?a.p:0.8;
+    sp=(520+c.p.shot*40)*(0.55+0.6*p)*(a.mod?0.82:1);kind='shot';
+  }else return;
+  const d=hyp(tx-c.x,ty-c.y)||1,ux=(tx-c.x)/d,uy=(ty-c.y)/d;
+  G.kick={x:c.x+ux*11,y:c.y+uy*11,vx:ux*sp,vy:uy*sp,kind,at:performance.now(),from:c.i};
+}
+function kickAhead(){
+  const K=G.kick;if(!K)return;
+  const now=performance.now(),t=(now-K.at)/1000;
+  const last=G.buf[G.buf.length-1].s,B=last.b;
+  // the server has registered the kick (ball no longer at the kicker's feet), or it took too long: hand back
+  const k=-Math.log(K.kind==='shot'?0.65:0.42),f=(1-Math.exp(-k*t))/k;
+  const b=M.ball;
+  if(t>0.6||(B[4]!==K.from&&B[8]===M.local&&G.buf[G.buf.length-1].at>K.at)){
+    // hand over to the server's ball without snapping back: glide from where we showed it
+    G.ownBall=true;ballAhead();
+    if(t<=0.6&&!b.owner){const px=clamp(K.x+K.vx*f,3,W-3),py=clamp(K.y+K.vy*f,3,H-3);b.ox=(b.ox||0)+(px-b.x);b.oy=(b.oy||0)+(py-b.y)}
+    G.kick=null;return;
+  }b.owner=null;b.kind=K.kind;b.vx=K.vx;b.vy=K.vy;
+  b.x=clamp(K.x+K.vx*f,3,W-3);b.y=clamp(K.y+K.vy*f,3,H-3);
 }
 function guestStep(dt){
   const now=performance.now(),rt=now-INTERP_MS;
@@ -1629,16 +1682,9 @@ function guestStep(dt){
   if(bl.owner===c){bl.x=clamp(c.x+c.fx*10,3,W-3);bl.y=clamp(c.y+c.fy*10,3,H-3)}
   G.pendingHist={x:P.x,y:P.y};
 }
-function applyInput(m){
-  const I=M.inp[1];
-  if(m.q)I.seq=m.q;
-  I.keys=new Set(m.k||[]);
-  const mm=m.m||[];I.mx=mm[0]??I.mx;I.my=mm[1]??I.my;I.over=!!mm[2];I.lmb=!!mm[3];I.rmb=!!mm[4];
-  const j=m.j||[];I.jx=j[0]||0;I.jy=j[1]||0;I.js=!!j[2];
-  for(const a of (m.a||[]))if(a&&typeof a.a==='string')M.acts[1].push(a);
-}
+
 function sendInput(){
-  const q=++G.seq;
+  const q=++G.seq;G.sent.set(q,performance.now());if(G.sent.size>300)G.sent.delete(G.sent.keys().next().value);
   if(G.pendingHist){G.hist.push({q,x:G.pendingHist.x,y:G.pendingHist.y});G.pendingHist=null;if(G.hist.length>240)G.hist.shift()}
   nsend({t:'i',q,k:[...LI.keys],m:[r1(LI.mx),r1(LI.my),LI.over?1:0,LI.lmb?1:0,LI.rmb?1:0],j:[r1(LI.jx),r1(LI.jy),LI.js?1:0],a:net.outbox.splice(0)});
 }
