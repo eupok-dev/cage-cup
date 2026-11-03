@@ -507,7 +507,7 @@ const KITS={
   yellow:{main:'#ffb627',ink:'#2a1a00',gk:'#34d1bf',label:'#ffb627'},
   red:{main:'#e5484d',ink:'#ffffff',gk:'#9b7bff',label:'#e5484d'},
   barca:{main:'#a50044',ink:'#ffffff',gk:'#ffd400',label:'#ff5d93',stripe:'#1f4fa3'},
-  madrid:{main:'#f2f2f2',ink:'#14213d',gk:'#ff8a1c',label:'#f2f2f2',stripe:'#c9a227'},
+  madrid:{main:'#f2f2f2',ink:'#14213d',gk:'#ff8a1c',label:'#f2f2f2',stripe:'#c9a227',ring:'#d9b23a'},
 };
 const STARS={
   barca:{name:'Barcelona 2011',short:'Barcelona',kit:'barca',players:[
@@ -1426,6 +1426,46 @@ function bigText(txt,y,size,col){
   ctx.font=`900 ${size}px "Big Shoulders Display", Impact, sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';
   ctx.lineWidth=Math.max(5,size/10);ctx.strokeStyle='#0d1820';ctx.strokeText(txt,W/2,y);ctx.fillStyle=col;ctx.fillText(txt,W/2,y);
 }
+// ---- players: chibi style (big head, kit shoulders outlined in team colour), animated in code ----
+const HAIRC=['#2a1a10','#141414','#5a3a1a','#c9a26b','#7a2e14','#1d1d1d'],SKINC=['#f1c7a0','#c98e62','#8d5a3b','#e0b088','#6b4228','#d9a77c'];
+function hashN(s){let h=7;for(const c of s||'')h=(h*31+c.charCodeAt(0))>>>0;return h}
+function drawChibi(e,kit,fdt,now){
+  const sp=hyp(e.vx,e.vy),run=clamp(sp/110,0,1);
+  e._ph=((e._ph||0)+fdt*(3+sp*0.07))%(Math.PI*2);   // stride gets quicker the faster he runs
+  const sw=Math.sin(e._ph)*run;
+  const hs=hashN(e.p.name),skin=SKINC[hs%6],hair=HAIRC[(hs>>3)%6];
+  const ring=kit.ring||kit.label,body=e.gk?kit.gk:kit.main,stripe=e.gk?null:kit.stripe;
+  let a=Math.atan2(e.fy,e.fx),sx=1,sy=1,lean=0,kick=0;
+  if(e.slide>0){a=Math.atan2(e.sdy,e.sdx);sx=1.35;sy=0.85}
+  else if(e.dive>0){a=Math.atan2(e.ddy,e.ddx);sx=1.5;sy=0.8}
+  const kt=e._kick?(now-e._kick)/1000:9;if(kt<0.22){kick=Math.sin(kt/0.22*Math.PI);lean=kick*3}
+  const stretched=e.slide>0||e.dive>0;
+  ctx.save();ctx.translate(e.x,e.y);
+  ctx.fillStyle=ring;ctx.globalAlpha=0.3;ctx.beginPath();ctx.ellipse(1.5,4,13,8,0,0,7);ctx.fill();ctx.globalAlpha=e.stun>0?0.75:1; // team-tinted ground shadow
+  ctx.rotate(a+(e.stun>0?Math.sin(now/45)*0.35:0));ctx.scale(sx,sy);ctx.translate(lean,0);
+  // boots, alternating under the body
+  ctx.fillStyle='#14181c';
+  for(const s of[-1,1]){const fx=stretched?9:(s*sw*6+(s===1?kick*9:0));ctx.beginPath();ctx.ellipse(fx+1,s*4.2,4.2,2.6,0,0,7);ctx.fill()}
+  // arms swing against the legs (reach forward on a dive)
+  for(const s of[-1,1]){const ax=e.dive>0?11:-s*sw*4;
+    ctx.fillStyle=body;ctx.strokeStyle=ring;ctx.lineWidth=1.6;ctx.beginPath();ctx.arc(ax,s*11.5,3.4,0,7);ctx.fill();ctx.stroke();
+    ctx.fillStyle=e.gk?'#f4f4f4':skin;ctx.beginPath();ctx.arc(ax+2.6,s*12.2,1.8,0,7);ctx.fill()}
+  ctx.save();const bob=1+0.05*Math.abs(sw);ctx.scale(bob,bob);
+  // shoulders in the kit, outlined in the team colour
+  ctx.fillStyle=body;ctx.strokeStyle=ring;ctx.lineWidth=2.6;
+  ctx.beginPath();ctx.roundRect(-8,-11.5,13,23,7);ctx.fill();
+  if(stripe){ctx.save();ctx.clip();ctx.fillStyle=stripe;for(const s of[-6,0,6])ctx.fillRect(-9,s-1.6,15,3.2);ctx.restore()}
+  ctx.stroke();
+  // big head: mostly hair from above, face peeking toward the front
+  ctx.fillStyle=skin;ctx.strokeStyle='rgba(0,0,0,.5)';ctx.lineWidth=1.1;ctx.beginPath();ctx.arc(2,0,7.3,0,7);ctx.fill();ctx.stroke();
+  ctx.fillStyle=hair;ctx.beginPath();ctx.arc(0.4,0,6.5,0,7);ctx.fill();
+  ctx.restore();
+  if(e.burst>0){ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.setLineDash([3,3]);ctx.beginPath();ctx.arc(0,0,16,0,7);ctx.stroke();ctx.setLineDash([])}
+  ctx.restore();
+  // shirt-number tag, always upright
+  if(e.p.num){ctx.font='800 8.5px Barlow, sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';const t=String(e.p.num),w=Math.max(10,ctx.measureText(t).width+5);
+    ctx.fillStyle=e.gk?body:ring;ctx.beginPath();ctx.roundRect(e.x+7,e.y-18,w,10,3);ctx.fill();ctx.fillStyle='#0d1820';ctx.fillText(t,e.x+7+w/2,e.y-12.6)}
+}
 function draw(){
   if(!M)return;
   keepSize();
@@ -1456,9 +1496,10 @@ function draw(){
   }
   const kits=M.kits.map(k=>[k.main,k.ink,k.gk,k.stripe]);
   const mine=human&&M.human[L]?M.ctrl[L]:null,theirs=human&&M.human[1-L]?M.ctrl[1-L]:null;
+  const nowT=performance.now(),fdt=Math.min(0.05,(nowT-(draw.t||nowT))/1000);draw.t=nowT;
+  {const bo=M.ball.owner;if(draw.po&&draw.po!==bo&&!bo&&M.ball.kind)draw.po._kick=nowT;draw.po=bo} // kick pose
   for(const e of [...M.ents].sort((a,b)=>a.y-b.y)){
     if(cam){ctx.save();ctx.translate(e.x,e.y);ctx.scale(PSC,PSC);ctx.translate(-e.x,-e.y)}
-    ctx.fillStyle='rgba(0,0,0,.25)';ctx.beginPath();ctx.ellipse(e.x+2,e.y+5,9,4,0,0,7);ctx.fill();
     if(e===mine){
       ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.beginPath();ctx.arc(e.x,e.y,14,0,7);ctx.stroke();
       ctx.fillStyle='#fff';ctx.beginPath();
@@ -1470,17 +1511,7 @@ function draw(){
       ctx.moveTo(e.x+e.fx*19,e.y+e.fy*19);
       ctx.lineTo(e.x+e.fx*14-e.fy*4,e.y+e.fy*14+e.fx*4);ctx.lineTo(e.x+e.fx*14+e.fy*4,e.y+e.fy*14-e.fx*4);ctx.fill();
     }
-    const k=kits[e.team];
-    ctx.fillStyle=e.stun>0?'#7d8a90':e.gk?k[2]:k[0];
-    ctx.beginPath();
-    if(e.slide>0)ctx.ellipse(e.x,e.y,13,7,Math.atan2(e.sdy,e.sdx),0,7);
-    else if(e.dive>0)ctx.ellipse(e.x,e.y,15,7,Math.atan2(e.ddy,e.ddx),0,7);
-    else ctx.arc(e.x,e.y,9,0,7);
-    ctx.fill();ctx.strokeStyle='rgba(0,0,0,.45)';ctx.lineWidth=1.5;ctx.stroke();
-    if(e.burst>0){ctx.strokeStyle='#fff';ctx.setLineDash([3,3]);ctx.beginPath();ctx.arc(e.x,e.y,12,0,7);ctx.stroke();ctx.setLineDash([])}
-    if(k[3]&&!e.gk&&!(e.stun>0)&&!(e.slide>0)&&!(e.dive>0)){ctx.save();ctx.beginPath();ctx.arc(e.x,e.y,8.2,0,7);ctx.clip();ctx.fillStyle=k[3];ctx.fillRect(e.x-9,e.y-2,18,4);ctx.restore()}
-    ctx.fillStyle=e.gk?'#0d1820':k[1];ctx.font='700 10px Barlow, sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
-    ctx.fillText(e.p.num||'',e.x,e.y+0.5);
+    drawChibi(e,M.kits[e.team],fdt,nowT);
     if(showNames||e===mine||e===theirs){
       ctx.font=`${e===mine?800:600} ${e===mine?12:10}px Barlow, sans-serif`;ctx.lineWidth=3;ctx.strokeStyle='rgba(13,24,32,.85)';
       const lbl=e.p.short||'';ctx.strokeText(lbl,e.x,e.y+(e===mine?26:21));
