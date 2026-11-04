@@ -1888,6 +1888,7 @@ function applyRemoteInput(T,m){
 
 
 
+
 // ---------- local input ----------
 const LI=newInput();
 let mode=null,stage='menu';
@@ -1989,7 +1990,7 @@ function drawDiveCue(T){
   }
 }
 // phone camera: the pitch fills the screen, zoomed in and following the play
-const VIEW_H=350,PSC=1.3,CAM={x:W/2,y:H/2,init:false};
+const VIEW_H=420,PSC=1.3,CAM={x:W/2,y:H/2,init:false};
 function camOn(){return typeof MOB!=='undefined'&&MOB&&document.body.classList.contains('mobplay')}
 function camApply(){
   const L=M.local,b=M.ball,c=M.ctrl[L];
@@ -2054,7 +2055,22 @@ function drawChibi(e,kit,fdt,now,cx=ctx){
 const G3={on:false,ready:false,loading:false,fail:false,el:null,R:null,scene:null,cam:null,field:'',fieldG:null,pl:new Map(),ball:null,m:null,view:null,geo:null,mats:new Map()};
 G3.TILT=47*Math.PI/180;G3.S=Math.sin(G3.TILT);G3.C=Math.cos(G3.TILT);
 try{G3.on=localStorage.getItem('cagecup.3d')==='on'}catch(e){}
-const g3Active=()=>G3.on&&G3.ready;
+const g3Active=()=>G3.on&&G3.ready&&!G3.lost;
+// Phones drop WebGL contexts (switching apps, low memory). Draw in 2D meanwhile; rebuild 3D when it comes back,
+// or from scratch if it doesn't come back on its own.
+function g3Watch(el){
+  el.addEventListener('webglcontextlost',ev=>{ev.preventDefault();G3.lost=true;G3.lostAt=performance.now();el.style.display='none';document.body.classList.remove('g3d')},false);
+  el.addEventListener('webglcontextrestored',()=>{G3.lost=false;G3.field='';G3.m=null;document.body.classList.toggle('g3d',g3Active())},false);
+}
+function g3Recover(){
+  // context still gone after a while: throw the renderer away and build a new one
+  if(!G3.lost||performance.now()-G3.lostAt<2500||G3.rebuilding)return;
+  G3.rebuilding=true;
+  try{if(G3.R)G3.R.dispose()}catch(e){}
+  if(G3.el)G3.el.remove();
+  Object.assign(G3,{el:null,R:null,scene:null,cam:null,field:'',fieldG:null,pl:new Map(),ball:null,m:null,geo:null,pg:null,mats:new Map(),ready:false,lost:false,fans:null,fanBase:null});
+  netTexC=null;g3Init();G3.rebuilding=false;
+}
 function g3Load(cb){
   if(window.THREE){cb();return}
   if(G3.loading)return;G3.loading=true;
@@ -2076,7 +2092,7 @@ function g3Init(){
   const T=THREE;
   try{
     const el=document.createElement('canvas');el.id='pitch3d';el.setAttribute('aria-hidden','true');cv.parentNode.insertBefore(el,cv);G3.el=el;
-    const R=new T.WebGLRenderer({canvas:el,antialias:true,powerPreference:'high-performance'});R.setClearColor(0x0a131a);R.setPixelRatio(1);G3.R=R;
+    const R=new T.WebGLRenderer({canvas:el,antialias:true,powerPreference:'high-performance'});R.setClearColor(0x0a131a);R.setPixelRatio(1);G3.R=R;g3Watch(el);
     const sc=G3.scene=new T.Scene();
     G3.hemi=new T.HemisphereLight(0xe8f0ff,0x3a4a30,0.55);sc.add(G3.hemi);
     G3.sun=new T.DirectionalLight(0xfff4e0,1.0);G3.sun.position.set(-0.55,1,0.5);sc.add(G3.sun);
@@ -2432,6 +2448,7 @@ function g3Frame(fdt,now,cam){
   const st=el.style,l=cv.offsetLeft+'px',t=cv.offsetTop+'px',cw=cv.clientWidth+'px',ch=cv.clientHeight+'px';
   if(st.left!==l)st.left=l;if(st.top!==t)st.top=t;if(st.width!==cw)st.width=cw;if(st.height!==ch)st.height=ch;
   const fid=M.field||'classic';if(G3.field!==fid)g3Field(fid);
+  if(!G3.R.getContext()||G3.R.getContext().isContextLost()){G3.lost=true;G3.lostAt=G3.lostAt||performance.now();return}
   if(G3.m!==M){for(const P of G3.pl.values())G3.scene.remove(P.g);G3.pl.clear();G3.m=M}
   const sc=cam?1.5:1.38;G3.br=cam?1.5:1.3;
   for(const e of M.ents){
@@ -2478,6 +2495,8 @@ function draw(){
   if(!M)return;
   keepSize();
   const L=M.local,human=!M.demo;
+  if(G3.lost)g3Recover();
+  if(!Number.isFinite(CAM.x)||!Number.isFinite(CAM.y)){CAM.x=W/2;CAM.y=H/2;CAM.init=false}
   ctx.setTransform(1,0,0,1,0,0);
   const g3=g3Active();
   if(g3)ctx.clearRect(0,0,cv.width,cv.height);else{ctx.fillStyle='#0a131a';ctx.fillRect(0,0,cv.width,cv.height)}
