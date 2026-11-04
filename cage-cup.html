@@ -605,7 +605,7 @@ details.hint summary{cursor:pointer;font-family:var(--display);font-weight:800;f
 <div id="app">
   <header class="bar">
     <div class="brand">Cage <b>Cup</b></div>
-    <button class="sndbtn hsnd" aria-label="Sound on" title="Mute">🔊</button><button class="g3dbtn hg3" aria-pressed="false">3D</button>
+    <button class="sndbtn hsnd" aria-label="Sound on" title="Mute">🔊</button>
     <div class="chips" id="chips"></div>
   </header>
 
@@ -628,7 +628,7 @@ details.hint summary{cursor:pointer;font-family:var(--display);font-weight:800;f
         <section class="panel" id="menuPanel">
           <h1>Cage<b>Cup</b></h1>
           <p id="menuSub">Six-a-side cage football. Pick an opponent.</p>
-          <div class="menufoot"><button class="sndbtn msnd" aria-label="Sound on">🔊</button><button class="g3dbtn mg3" aria-pressed="false">3D</button><button class="devlink" data-dev="on">Dev mode</button><button class="devlink" data-dev="off">Exit dev mode</button><span class="devtag">DEV MODE ON</span></div>
+          <div class="menufoot"><button class="sndbtn msnd" aria-label="Sound on">🔊</button><button class="devlink" data-dev="on">Dev mode</button><button class="devlink" data-dev="off">Exit dev mode</button><span class="devtag">DEV MODE ON</span></div>
           <div class="modes" id="modeRow"><button class="btn big" id="careerBtn">Campaign</button><button class="btn big ghost" id="vsAiBtn">Play vs AI</button><button class="btn big ghost" id="vsPersonBtn">Play vs Person</button><button class="btn big ghost" id="tutBtn">Tutorial</button></div>
           <div class="diffs" id="diffRow" hidden>
             <span class="label pickl">Your team</span>
@@ -671,7 +671,7 @@ details.hint summary{cursor:pointer;font-family:var(--display);font-weight:800;f
           <div class="row" id="mForms"></div>
           <p class="mtip" id="mTip" hidden></p>
           <div id="mHowWrap" hidden><button class="btn ghost small mhowbtn" id="mHowBtn" aria-expanded="false">How to play full screen <span class="chev">▾</span></button><div id="mHow" hidden></div></div>
-          <div class="row"><button class="btn ghost small" id="mNames">Names: off</button><button class="btn ghost small" id="mG3">View: 2D</button><button class="btn small" id="mClose">Back to match</button></div>
+          <div class="row"><button class="btn ghost small" id="mNames">Names: off</button><button class="btn small" id="mClose">Back to match</button></div>
           <div id="mEnd"></div>
         </div></div>
       </div>
@@ -1889,6 +1889,7 @@ function applyRemoteInput(T,m){
 
 
 
+
 // ---------- local input ----------
 const LI=newInput();
 let mode=null,stage='menu';
@@ -2054,7 +2055,7 @@ function drawChibi(e,kit,fdt,now,cx=ctx){
 // (x scaled by z, y by z*sin(tilt)) and every overlay still lines up with the pitch.
 const G3={on:false,ready:false,loading:false,fail:false,el:null,R:null,scene:null,cam:null,field:'',fieldG:null,pl:new Map(),ball:null,m:null,view:null,geo:null,mats:new Map()};
 G3.TILT=47*Math.PI/180;G3.S=Math.sin(G3.TILT);G3.C=Math.cos(G3.TILT);
-try{G3.on=localStorage.getItem('cagecup.3d')==='on'}catch(e){}
+G3.on=true;   // the game is 3D only (it quietly draws 2D only if a phone can't run 3D, or while 3D recovers)
 const g3Active=()=>G3.on&&G3.ready&&!G3.lost;
 // Phones drop WebGL contexts (switching apps, low memory). Draw in 2D meanwhile; rebuild 3D when it comes back,
 // or from scratch if it doesn't come back on its own.
@@ -2078,7 +2079,7 @@ function g3Load(cb){
   s.onload=()=>{G3.loading=false;cb()};s.onerror=()=>{G3.loading=false;G3.fail=true;g3Set(false)};document.head.appendChild(s);
 }
 function g3Set(on){
-  G3.on=on;try{localStorage.setItem('cagecup.3d',on?'on':'off')}catch(e){}
+  G3.on=true;
   if(on&&!G3.ready&&!G3.fail)g3Load(g3Init);
   document.body.classList.toggle('g3d',g3Active());
   if(G3.el)G3.el.style.display=g3Active()?'block':'none';
@@ -2092,7 +2093,7 @@ function g3Init(){
   const T=THREE;
   try{
     const el=document.createElement('canvas');el.id='pitch3d';el.setAttribute('aria-hidden','true');cv.parentNode.insertBefore(el,cv);G3.el=el;
-    const R=new T.WebGLRenderer({canvas:el,antialias:true,powerPreference:'high-performance'});R.setClearColor(0x0a131a);R.setPixelRatio(1);G3.R=R;g3Watch(el);
+    const R=new T.WebGLRenderer({canvas:el,antialias:!(typeof MOB!=='undefined'&&MOB),powerPreference:'high-performance'});R.setClearColor(0x0a131a);R.setPixelRatio(1);G3.R=R;g3Watch(el);
     const sc=G3.scene=new T.Scene();
     G3.hemi=new T.HemisphereLight(0xe8f0ff,0x3a4a30,0.55);sc.add(G3.hemi);
     G3.sun=new T.DirectionalLight(0xfff4e0,1.0);G3.sun.position.set(-0.55,1,0.5);sc.add(G3.sun);
@@ -2129,7 +2130,9 @@ function g3BallGeo(r){
 // ---- the ground: painted texture + walls, cage, goals, lights and (in stadiums) a stand of fans ----
 function g3Field(id){
   const T=THREE,sc=G3.scene;
-  if(G3.fieldG){sc.remove(G3.fieldG);G3.fieldG.traverse(o=>{if(o.geometry&&!Object.values(G3.geo).includes(o.geometry))o.geometry.dispose()})}
+  if(G3.fieldG){sc.remove(G3.fieldG);const cached=new Set(G3.mats.values());
+    G3.fieldG.traverse(o=>{if(o.geometry&&!Object.values(G3.geo).includes(o.geometry))o.geometry.dispose();
+      const m=o.material;if(m&&!cached.has(m)){if(m.map&&m.map!==netTexC)m.map.dispose();m.dispose()}})}
   const F=G3.fieldG=new T.Group();sc.add(F);G3.field=id;
   const gd=GROUNDS[id]||GROUNDS.classic,wallC=gd.wall||'#c9d4da';
   const tex=new T.CanvasTexture(groundImg(id));tex.anisotropy=4;
@@ -2449,7 +2452,7 @@ function g3Frame(fdt,now,cam){
   if(st.left!==l)st.left=l;if(st.top!==t)st.top=t;if(st.width!==cw)st.width=cw;if(st.height!==ch)st.height=ch;
   const fid=M.field||'classic';if(G3.field!==fid)g3Field(fid);
   if(!G3.R.getContext()||G3.R.getContext().isContextLost()){G3.lost=true;G3.lostAt=G3.lostAt||performance.now();return}
-  if(G3.m!==M){for(const P of G3.pl.values())G3.scene.remove(P.g);G3.pl.clear();G3.m=M}
+  if(G3.m!==M){for(const P of G3.pl.values()){G3.scene.remove(P.g);try{P.ring.material.dispose()}catch(e){}}G3.pl.clear();G3.m=M}
   const sc=cam?1.5:1.38;G3.br=cam?1.5:1.3;
   for(const e of M.ents){
     let P=G3.pl.get(e);if(!P){P=g3Player();G3.pl.set(e,P)}
@@ -2489,7 +2492,6 @@ function g3Apply(cam){
   G3.view={z,tx,ty};
   ctx.setTransform(z,0,0,z*S,cv.width/2-tx*z,cv.height/2-ty*z*S);
 }
-document.addEventListener('click',e=>{const b=e.target.closest('.g3dbtn,#mG3');if(b){e.stopPropagation();g3Set(!G3.on)}},true);
 g3Set(G3.on);
 function draw(){
   if(!M)return;
