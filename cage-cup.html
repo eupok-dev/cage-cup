@@ -44,7 +44,7 @@ button:focus-visible,.pcard:focus-visible{outline:3px solid var(--chalk);outline
 .row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
 
 /* stage */
-#matchWrap{--pw:min(100%,calc((100dvh - 214px) * 1.5926));display:flex;flex-direction:column;gap:6px;align-items:center}
+#matchWrap{--pw:min(100%,calc((100dvh - 150px) * 1.5926));display:flex;flex-direction:column;gap:6px;align-items:center}
 #pcards{display:none!important}
 .score{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px;width:100%;max-width:var(--pw);font-variant-numeric:tabular-nums}
 .score .tm{font-family:var(--display);font-weight:800;font-size:clamp(16px,3vw,24px);text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
@@ -53,6 +53,11 @@ button:focus-visible,.pcard:focus-visible{outline:3px solid var(--chalk);outline
 .score .goals{font-family:var(--display);font-weight:900;font-size:clamp(28px,5vw,40px);line-height:1}
 .score .clock{font-size:13px;font-weight:600;color:var(--muted)}
 .score .clock.gold{color:var(--kit)}
+.score .lat{display:inline-block;vertical-align:middle;margin:0 10px;padding:2px 8px;border-radius:999px;font:700 11px var(--body);letter-spacing:.02em;color:var(--muted);background:var(--panel2);border:1px solid var(--line);text-transform:none;font-variant-numeric:tabular-nums}
+.score .lat[hidden]{display:none}
+.lat.good,.mping.good{color:#4cc38a}.lat.ok,.mping.ok{color:#ffb627}.lat.bad,.mping.bad{color:#e5484d}
+.mtop .mping{font:700 11px var(--body);color:var(--muted);font-variant-numeric:tabular-nums}
+.mtop .mping[hidden]{display:none}
 .pitchbox{width:var(--pw);position:relative}
 #pitch{cursor:crosshair;display:block;width:100%;aspect-ratio:860/540;max-width:100%;border-radius:8px;touch-action:none}
 .endrow{width:var(--pw);max-width:100%;display:flex;justify-content:flex-end}
@@ -142,6 +147,20 @@ body.dev .devlink[data-dev=on],body:not(.dev) .devlink[data-dev=off]{display:non
 .ppill.active{background:color-mix(in srgb,var(--c) 30%,rgba(9,17,24,.88))}
 @keyframes ppglow{50%{box-shadow:0 8px 24px rgba(0,0,0,.4),0 0 0 5px color-mix(in srgb,var(--c) 30%,transparent)}}
 body:not(.mob) .ctrlbar .ptile{display:none!important}
+body:not(.mob) #ctrlbar{display:none!important}
+.ppill{max-width:29%}
+/* formation picker docked at the bottom middle of the pitch */
+#formDock{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);pointer-events:auto;display:flex;flex-direction:column;align-items:stretch;gap:4px;padding:6px 6px 6px;border-radius:16px;background:rgba(9,17,24,.82);border:1px solid rgba(255,255,255,.14);box-shadow:0 8px 24px rgba(0,0,0,.35);backdrop-filter:blur(4px);max-width:40%}
+.fdlabel{font:800 9.5px var(--body);letter-spacing:.16em;text-transform:uppercase;color:var(--muted);text-align:center;line-height:1}
+#formDock .forms{display:flex;gap:4px;flex:none}
+#formDock .fbtn{min-height:0;padding:5px 10px 6px 6px;border-radius:10px;border:1px solid transparent;background:transparent;column-gap:7px;grid-template-rows:auto auto}
+#formDock .fbtn:hover{background:rgba(255,255,255,.06);border-color:transparent}
+#formDock .fbtn.on{background:color-mix(in srgb,var(--kit) 20%,transparent);border-color:color-mix(in srgb,var(--kit) 70%,transparent)}
+#formDock .fbtn.pend{border-color:var(--kit);border-style:dashed}
+#formDock .fbtn kbd{width:22px;height:22px;font-size:13px;border-radius:6px}
+#formDock .fbtn .fn{font-size:13.5px;letter-spacing:.01em}
+#formDock .fbtn .fs{font-size:10.5px}
+#formDock .fbtn .fbar{height:3px}
 #ctlSheet{position:fixed;inset:0;z-index:50;background:rgba(8,17,24,.8);display:flex;align-items:center;justify-content:center;padding:16px;touch-action:auto}
 #ctlSheet[hidden]{display:none}
 #ctlSheet .setin{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;width:min(720px,100%);display:flex;flex-direction:column;gap:10px;max-height:90dvh}
@@ -761,6 +780,7 @@ details.hint summary{cursor:pointer;font-family:var(--display);font-weight:800;f
       </div></div>
       <div id="playPills" hidden aria-live="polite">
         <div class="ppill att off" id="pill0"><span class="ppring"><svg viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="22" r="19" class="ptrack2"/><circle cx="22" cy="22" r="19" class="pring2"/></svg><kbd class="ppk">Q</kbd></span><span class="pptext"><small class="ppside">Attack</small><b class="ppname"></b><small class="ppmsg"></small></span></div>
+        <div id="formDock"><span class="fdlabel">Formation</span><div class="fdslot"></div></div>
         <div class="ppill def off" id="pill1"><span class="ppring"><svg viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="22" r="19" class="ptrack2"/><circle cx="22" cy="22" r="19" class="pring2"/></svg><kbd class="ppk">Q</kbd></span><span class="pptext"><small class="ppside">Defend</small><b class="ppname"></b><small class="ppmsg"></small></span></div>
       </div>
       <div id="pmenu" hidden role="dialog" aria-label="Match menu"><div class="pmin">
@@ -771,7 +791,7 @@ details.hint summary{cursor:pointer;font-family:var(--display);font-weight:800;f
       </div></div>
       <div id="cutBox" hidden role="dialog" aria-label="Story"><canvas id="cutFace" width="112" height="112"></canvas><div class="ctext"><b id="cutName"></b><p id="cutText"></p><span id="cutNext">Tap to continue ▸</span></div><button id="cutSkip">Skip scene ▸▸</button></div>
       <div id="mob" aria-label="Touch controls">
-        <div class="mtop"><span id="mScore">0–0</span><span class="mclock" id="mClock">0'</span><button class="sndbtn" aria-label="Sound on">🔊</button><button id="mFull" aria-label="Full screen" hidden>⛶</button><button id="mMenu" aria-label="Menu">☰</button></div>
+        <div class="mtop"><span id="mScore">0–0</span><span class="mclock" id="mClock">0'</span><span class="mping" id="mPing" hidden></span><button class="sndbtn" aria-label="Sound on">🔊</button><button id="mFull" aria-label="Full screen" hidden>⛶</button><button id="mMenu" aria-label="Menu">☰</button></div>
         <div id="mZone"></div>
         <div id="mStick"><i id="mKnob"></i></div>
         <button class="mb" id="mS" aria-label="Sprint (hold) and skill move or tackle (tap)"><span id="mSn">Sprint<i>&amp;</i>Skill</span></button>
@@ -2002,6 +2022,9 @@ function applyRemoteInput(T,m){
 
 
 
+
+
+
 // ---------- local input ----------
 const LI=newInput();
 let mode=null,stage='menu';
@@ -2834,13 +2857,15 @@ function hud(){
   if(!M)return;
   const L=M.local,you=t=>!M.demo&&M.human[t]&&t===L?' <span class="you">YOU</span>':'';
   const key=M.names.join('|')+L+M.demo;
-  if(hud.k!==key){hud.k=key;$('#sHome').innerHTML=M.names[0]+you(0);$('#sAway').innerHTML=M.names[1]+you(1);$('#sHome').style.color=M.kits[0].label;$('#sAway').style.color=M.kits[1].label}
+  if(hud.k!==key){hud.k=key;$('#sHome').innerHTML=M.names[0]+you(0)+'<span class="lat" id="lat0" hidden></span>';$('#sAway').innerHTML='<span class="lat" id="lat1" hidden></span>'+M.names[1]+you(1);$('#sHome').style.color=M.kits[0].label;$('#sAway').style.color=M.kits[1].label}
   playerCards();
   $('#sGoals').textContent=M.score[0]+' – '+M.score[1];
   const cl=$('#sClock');
   if(M.golden){cl.textContent='Golden goal';cl.classList.add('gold')}
   else{cl.textContent=Math.min(90,Math.floor(M.t/M.dur*90))+"'";cl.classList.remove('gold')}
   if(stage==='match')ctrlHud();
+  pingTick();if(PING.m!==M){PING.m=M;PING.peer=[null,null];PING.lastPong=0;PING.rtt=0;PING.t=0}
+  {const n=performance.now();if(n-(latHud.t||0)>400){latHud.t=n;latHud()}}
   mobTick();
 }
 const ROLE={G:'Keeper',D:'Defender',M:'Midfielder',F:'Forward'};
@@ -3083,8 +3108,29 @@ function connect(room){
     }
   };
 }
+// ---------- latency shown beside the team names in online matches ----------
+const PING={id:0,sent:new Map(),rtt:0,peer:[null,null],lastPong:0,t:0};
+function pingTick(){
+  if(!(net.ws&&net.ws.readyState===1&&M&&M.guest&&!M.over))return;
+  const now=performance.now();if(now-PING.t<2000)return;PING.t=now;
+  const id=++PING.id;PING.sent.set(id,now);if(PING.sent.size>10)PING.sent.delete(PING.sent.keys().next().value);
+  nsend({t:'ping',id,r:PING.rtt?Math.round(PING.rtt):undefined});
+}
+function onPong(m){const t0=PING.sent.get(m.id);if(t0===undefined)return;PING.sent.delete(m.id);
+  const s=performance.now()-t0;PING.rtt=PING.rtt?PING.rtt*0.7+s*0.3:s;PING.lastPong=performance.now();if(Array.isArray(m.p))PING.peer=m.p}
+// my number: measured ping (or the input round trip, if the server is older and doesn't answer pings)
+function latOf(T){if(!M||!M.guest)return null;
+  if(T===M.local){const v=PING.lastPong?PING.rtt:G.rtt;return v>0?Math.round(v):null}
+  const v=PING.peer[T];return Number.isFinite(v)?v:null}
+function latHud(){
+  const on=stage==='match'&&M&&M.guest&&!M.demo;
+  for(const T of[0,1]){const el=$('#lat'+T);if(!el)continue;const v=on?latOf(T):null;
+    el.hidden=!on;el.textContent=v==null?'– ms':v+' ms';el.className='lat'+(v==null?'':v<70?' good':v<140?' ok':' bad')}
+  const mp=$('#mPing');if(mp){if(!on)mp.hidden=true;else{const a=latOf(M.local),b=latOf(1-M.local);mp.hidden=false;mp.textContent=(a==null?'–':a)+' / '+(b==null?'–':b)+' ms';mp.className='mping'+(a==null?'':a<70?' good':a<140?' ok':' bad')}}
+}
 function onNet(m){
   switch(m.t){
+    case 'pong':onPong(m);break;
     case 'hello':
       net.urls=m.urls||[];
       if(m.role==='full'||m.role==='none'){
@@ -3576,7 +3622,7 @@ function mobSetPlay(on){
   else{$('#mSheet').classList.remove('open');try{if(document.fullscreenElement)document.exitFullscreen().catch(()=>{})}catch(e){}}
   requestAnimationFrame(resize);setTimeout(resize,250);
 }
-if(!MOB)$('#pmEnd').appendChild($('#endrow'));   // desktop: end / leave live in the pause menu
+if(!MOB){$('#pmEnd').appendChild($('#endrow'));$('#formDock .fdslot').appendChild(document.querySelector('.ctrlbar .forms'))}   // desktop: formations sit on the pitch between the play pills   // desktop: end / leave live in the pause menu
 (function mobile(){
   if(!MOB)return;
   document.body.classList.add('mob');
@@ -4540,6 +4586,8 @@ $('#ctlSheet').addEventListener('click',e=>{if(e.target.id==='ctlSheet')ctlOpen(
 kbRefresh();
 // ---------- version history (newest first; add an entry with every change) ----------
 const VERSIONS=[
+ {v:'1.12',d:'Nov 6, 2026',items:['Desktop: the formation buttons moved onto the pitch, between the two play pills, in one framed group','The pitch is a little bigger again now that the row under it is gone']},
+ {v:'1.11',d:'Nov 6, 2026',items:['Online matches show each player\'s latency (ping) beside their team name, colour-coded green, amber or red','On phones it shows in the top bar as your ping / opponent\'s ping']},
  {v:'1.10',d:'Nov 6, 2026',items:['Both play pills now show at once: defence on your half\'s side, attack on the opponent\'s side','Pills stay grey until a play can be used, then light up in blue (attack) or orange (defence)']},
  {v:'1.9',d:'Nov 6, 2026',items:['Desktop: attacking and defensive plays share one key and one recharge, and swap with possession (like the phone button)','New play pill in the bottom corner of the pitch: blue for attack on the left, orange for defence on the right','Removed the play and keeper dive tiles under the pitch (the dive cue stays over your keeper)','Phone: no more F and star badges over players, just colour cues']},
  {v:'1.8',d:'Nov 6, 2026',items:['Bigger pitch with less space between the header and the game','The player stats card no longer shows during matches','The controls chart under the pitch moved into a Controls button in the pause menu','Every keyboard control can be reassigned, and keys follow your keyboard layout']},

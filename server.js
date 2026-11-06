@@ -181,6 +181,12 @@ function onMessage(c, text) {
   let m; try { m = JSON.parse(text); } catch (e) { return; }
   const room = c.room; if (!room || !m || typeof m.t !== 'string') return;
   if (m.t === 'i') { if (room.match) room.match.api.applyRemoteInput(teamOf(c), m); return; }
+  // latency: answer right away, and tell each player both players' latest measured round trips (shown beside the team names)
+  if (m.t === 'ping') {
+    if (Number.isFinite(m.r)) c.rtt = Math.max(0, Math.min(9999, Math.round(m.r)));
+    const at = T => { const p = T ? room.guest : room.host; return p && Number.isFinite(p.rtt) ? p.rtt : null; };
+    send(c, { t: 'pong', id: m.id, p: [at(0), at(1)] }); return;
+  }
   if (m.t === 'test' && process.env.CAGE_TEST && room.match) { // automated tests only
     const T = teamOf(c), ctx = room.match.api.getM();
     const e = ctx.ents.find(q => q.team === T && q.slot === 3); e.x = T ? 450 : 350; e.y = 250; e.vx = e.vy = 0; e.fx = T ? -1 : 1; e.fy = 0;
