@@ -259,7 +259,11 @@ body.mob .hmenu:not([hidden]){display:flex;flex-direction:column;position:absolu
 .hmenu .hmver:hover{background:none}
 .hmenu .hmon{background:none!important;border:0!important;border-bottom:1px solid var(--line)!important;border-radius:0!important;box-shadow:none!important;padding:8px 12px 10px!important;margin-bottom:4px;font-size:13px}
 body:not(.mob) .menufoot .devlink{display:none}
-body.mob .foot{display:none}
+body.mob .foot:not(.infoot){display:none}
+.foot.infoot[hidden]{display:none}
+.foot.infoot{order:10;align-items:flex-start;padding:4px 0 0;gap:4px;width:100%}
+.foot.infoot .footrow{display:none}
+.foot.infoot .about{margin:0;text-align:left;max-width:60ch}
 .devtag{border:0;cursor:pointer;display:none;font:800 11px var(--display);letter-spacing:.06em;color:var(--kit-ink);background:var(--kit);border-radius:4px;padding:2px 6px}
 body.dev .devtag{display:inline-block}
 .devbox{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:8px;width:min(320px,100%)}
@@ -2129,6 +2133,8 @@ function applyRemoteInput(T,m){
 
 
 
+
+
 // ---------- local input ----------
 const LI=newInput();
 let mode=null,stage='menu';
@@ -3601,7 +3607,7 @@ function menuView(v){
   const rows={main:'modeRow',qp:'qpRow',pvp:'pvpRow',join:'joinRow',ai:'diffRow'};
   for(const[k,id]of Object.entries(rows)){const el=$('#'+id);if(el)el.hidden=k!==v}
   $('#menuSub').textContent=MENU_SUB[v]||MENU_SUB.main;
-  const mt=document.querySelector('.menutip');if(mt)mt.hidden=v!=='main';
+  const mt=document.querySelector('.menutip');if(mt)mt.hidden=v!=='main';const inf=document.querySelector('.foot.infoot');if(inf)inf.hidden=v!=='main';
   if(v==='ai'){markPicks();$('#aiGo').focus()}
   if(v==='join'){$('#joinErr').hidden=true;setTimeout(()=>$('#joinLink').focus(),0)}
 }
@@ -3800,6 +3806,7 @@ if(!MOB){$('#pitchbox').appendChild($('#tut'));$('#pmEnd').appendChild($('#endro
 (function mobile(){
   if(!MOB)return;
   document.body.classList.add('mob');
+  {const f=document.querySelector('footer.foot'),mp=document.getElementById('menuPanel');if(f&&mp){mp.appendChild(f);f.classList.add('infoot')}}   // phones: the about text and copyright sit at the bottom of the main menu
   const root=$('#mob');
   root.addEventListener('touchstart',e=>{if(!e.target.closest('#mSheet'))e.preventDefault()},{passive:false});
   root.addEventListener('contextmenu',e=>e.preventDefault());
@@ -4770,7 +4777,8 @@ function onlinePoll(){
 onlinePoll();setInterval(onlinePoll,30000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)onlinePoll()});
 // ---------- version history (newest first; add an entry with every change) ----------
 const VERSIONS=[
- {v:'2.12', d:'Nov 6, 2026', items:['Mobile: the on-screen buttons are more see-through so players and the ball stay visible behind them','Mobile: the camera follows the ball more closely and keeps it clear of the thumb buttons, even in the bottom-right corner']},
+ {v:'2.13', d:'Nov 6, 2026', items:['Mobile: the game description and "All rights reserved" now show at the bottom of the main menu']},
+  {v:'2.12', d:'Nov 6, 2026', items:['Mobile: the on-screen buttons are more see-through so players and the ball stay visible behind them','Mobile: the camera follows the ball more closely and keeps it clear of the thumb buttons, even in the bottom-right corner']},
   {v:'2.11', d:'Nov 6, 2026', items:['iPhone app mode: the header now sits below the camera notch / Dynamic Island','Mobile landscape: the header stays visible on the menus','Mobile: Contact and the version number now show at the bottom of the menu']},
   {v:'2.10', d:'Nov 6, 2026', items:['Find me a match: after 20 seconds with no opponent, you can jump into a match against the AI instead']},
   {v:'2.9', d:'Nov 6, 2026', items:['Removed the Dev mode link','Footer and mobile menu now just show the version number (no changelog popup)','New favicon and app icon: neon green with a black pitch']},
