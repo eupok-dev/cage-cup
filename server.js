@@ -1,4 +1,4 @@
-// Cage Cup multiplayer server.
+// Boot Rivals multiplayer server.
 // Serves the game, hosts rooms, and RUNS each online match itself so both players
 // get the same delay. No installs needed: only Node's built-in modules (Node 18+).
 //   Local:   node server.js            (optional: PORT=9000 node server.js)
@@ -9,6 +9,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const vm = require('vm');
+const zlib = require('zlib');
 
 const PORT = Number(process.env.PORT) || 8080;
 const GAME = path.join(__dirname, 'cage-cup.html');
@@ -21,16 +22,55 @@ const SIM_JIT = Number(process.env.SIM_JITTER_MS) || 0;
 
 function readGame() { return fs.readFileSync(GAME, 'utf8'); }
 function gameVersion() { return crypto.createHash('sha1').update(readGame()).digest('hex').slice(0, 12); }
-function page() {
+// ---- search engines and link previews ----
+const LANGS = ['en', 'es', 'pt', 'fr', 'de', 'ar'];
+const SEO = {
+  en: ['Boot Rivals – Free 6-a-Side Street Football Game | Play in Your Browser', 'Play Boot Rivals free in your browser: fast 6-a-side street football with a story campaign, skill moves, set plays and online matches against friends. No download needed.'],
+  es: ['Boot Rivals – Juego de fútbol callejero 6 contra 6 gratis | Juega en el navegador', 'Juega gratis a Boot Rivals en tu navegador: fútbol callejero 6 contra 6 con campaña, regates, jugadas y partidos online contra amigos. Sin descargas.'],
+  pt: ['Boot Rivals – Jogo de futebol de rua 6x6 grátis | Jogue no navegador', 'Jogue Boot Rivals grátis no navegador: futebol de rua 6 contra 6 com campanha, dribles, jogadas ensaiadas e partidas online contra amigos. Sem download.'],
+  fr: ['Boot Rivals – Jeu de foot de rue à 6 gratuit | Jouez dans le navigateur', 'Jouez gratuitement à Boot Rivals dans votre navigateur : foot de rue à 6 avec campagne, gestes techniques, combinaisons et matchs en ligne entre amis. Sans téléchargement.'],
+  de: ['Boot Rivals – Kostenloses 6-gegen-6 Straßenfußball-Spiel | Im Browser spielen', 'Spiel Boot Rivals kostenlos im Browser: schneller Straßenfußball sechs gegen sechs mit Kampagne, Tricks, Spielzügen und Online-Spielen gegen Freunde. Ohne Download.'],
+  ar: ['Boot Rivals – لعبة كرة قدم الشوارع ستة ضد ستة مجانًا | العب في المتصفح', 'العب Boot Rivals مجانًا في متصفحك: كرة قدم شوارع سريعة ستة ضد ستة مع حملة قصصية ومهارات وخطط ومباريات أونلاين ضد أصدقائك. بدون تنزيل.']
+};
+// the public address for links shared or indexed (not the LAN address used for local testing)
+function publicBase(req) {
+  const host = (req && (req.headers['x-forwarded-host'] || req.headers.host)) || `localhost:${PORT}`;
+  const local = /^(localhost|127\.0\.0\.1|\[::1\]|\d+\.\d+\.\d+\.\d+)(:|$)/.test(host);
+  const proto = (req && (req.headers['x-forwarded-proto'] || '').split(',')[0]) || (local ? 'http' : 'https');
+  return `${proto}://${host}`;
+}
+const esc = s => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+function seoHead(req) {
+  let lang = 'en'; try { const q = new URL(req.url, 'http://x').searchParams.get('lang'); if (LANGS.includes(q)) lang = q; } catch (e) {}
+  const base = publicBase(req), url = base + '/' + (lang === 'en' ? '' : '?lang=' + lang), [title, desc] = SEO[lang];
+  const ld = [{ '@context': 'https://schema.org', '@type': 'VideoGame', name: 'Boot Rivals', url: base + '/', description: SEO.en[1], image: base + '/og-image.png',
+      genre: ['Sports', 'Football', 'Soccer', 'Arcade'], gamePlatform: ['Web browser', 'Android', 'iOS', 'Windows', 'macOS'], applicationCategory: 'Game', operatingSystem: 'Any',
+      playMode: ['SinglePlayer', 'MultiPlayer'], inLanguage: LANGS, offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' } },
+    { '@context': 'https://schema.org', '@type': 'WebSite', name: 'Boot Rivals', url: base + '/', inLanguage: LANGS }];
+  return { lang, html:
+    `<title>${esc(title)}</title><meta name="description" content="${esc(desc)}">` +
+    '<meta name="robots" content="index,follow,max-image-preview:large">' +
+    `<link rel="canonical" href="${esc(url)}">` +
+    LANGS.map(l => `<link rel="alternate" hreflang="${l}" href="${esc(base + '/' + (l === 'en' ? '' : '?lang=' + l))}">`).join('') +
+    `<link rel="alternate" hreflang="x-default" href="${esc(base + '/')}">` +
+    `<meta property="og:type" content="website"><meta property="og:site_name" content="Boot Rivals"><meta property="og:title" content="${esc(title)}"><meta property="og:description" content="${esc(desc)}">` +
+    `<meta property="og:url" content="${esc(url)}"><meta property="og:image" content="${esc(base + '/og-image.png')}"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:image:alt" content="Boot Rivals: six-a-side street football">` +
+    `<meta property="og:locale" content="${{ en: 'en_US', es: 'es_ES', pt: 'pt_BR', fr: 'fr_FR', de: 'de_DE', ar: 'ar_AR' }[lang]}">` +
+    `<meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${esc(title)}"><meta name="twitter:description" content="${esc(desc)}"><meta name="twitter:image" content="${esc(base + '/og-image.png')}">` +
+    `<script type="application/ld+json">${JSON.stringify(ld).replace(/</g, '\\u003c')}</script>` };
+}
+function page(req) {
   const html = readGame();
   const ver = crypto.createHash('sha1').update(html).digest('hex').slice(0, 12);
-  const body = html.replace('<script>', `<script>window.CAGE_SERVER=1;window.CAGE_VER='${ver}';\n`);
-  return '<!doctype html><html lang="en"><head><meta charset="utf-8">' +
-    '<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">' +
+  const seo = seoHead(req);
+  // the game file carries its own <title> for the stand-alone preview; the server's head replaces it
+  const body = html.replace(/<title>[^<]*<\/title>/, '').replace('<script>', `<script>window.CAGE_SERVER=1;window.CAGE_VER='${ver}';\n`);
+  return `<!doctype html><html lang="${seo.lang}"><head><meta charset="utf-8">` +
+    '<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">' + seo.html +
     // "Add to Home Screen" opens the game full screen, with no browser bars
-    '<meta name="theme-color" content="#0d1820"><meta name="mobile-web-app-capable" content="yes">' +
+    '<meta name="theme-color" content="#121318"><meta name="mobile-web-app-capable" content="yes">' +
     '<meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">' +
-    '<meta name="apple-mobile-web-app-title" content="Cage Cup"><link rel="manifest" href="/manifest.webmanifest">' +
+    '<meta name="apple-mobile-web-app-title" content="Boot Rivals"><link rel="manifest" href="/manifest.webmanifest">' +
     '<link rel="apple-touch-icon" href="/icon-180.png"><link rel="icon" href="/icon-192.png">' +
     '</head><body>' + body + '</body></html>';
 }
@@ -61,8 +101,8 @@ function baseUrl(req) {
 }
 
 const MANIFEST = JSON.stringify({
-  name: 'Cage Cup', short_name: 'Cage Cup', start_url: '/', scope: '/', display: 'fullscreen', orientation: 'landscape',
-  background_color: '#0d1820', theme_color: '#0d1820',
+  name: 'Boot Rivals', short_name: 'Boot Rivals', start_url: '/', scope: '/', display: 'fullscreen', orientation: 'landscape',
+  background_color: '#121318', theme_color: '#121318',
   icons: [{ src: '/icon-192.png', sizes: '192x192', type: 'image/png' }, { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' }]
 });
 // players online: every open game checks in about every 30s with a random id; count the ids seen in the last 70s
@@ -107,9 +147,27 @@ const server = http.createServer((req, res) => {
     catch (e) { res.writeHead(404); res.end(); }
     return;
   }
+  // crawlers: robots.txt, a sitemap with every language, and the image shown when the link is shared
+  if (req.method === 'GET' && url === '/robots.txt') { res.writeHead(200, { 'Content-Type': 'text/plain' }); res.end(`User-agent: *\nAllow: /\nDisallow: /ws\nDisallow: /online\n\nSitemap: ${publicBase(req)}/sitemap.xml\n`); return; }
+  if (req.method === 'GET' && url === '/sitemap.xml') {
+    const b = publicBase(req), u = l => b + '/' + (l === 'en' ? '' : '?lang=' + l), alt = LANGS.map(l => `<xhtml:link rel="alternate" hreflang="${l}" href="${u(l).replace(/&/g, '&amp;')}"/>`).join('');
+    const xml = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">' +
+      LANGS.map(l => `<url><loc>${u(l).replace(/&/g, '&amp;')}</loc>${alt}<changefreq>weekly</changefreq><priority>${l === 'en' ? '1.0' : '0.8'}</priority></url>`).join('') + '</urlset>';
+    res.writeHead(200, { 'Content-Type': 'application/xml' }); res.end(xml); return;
+  }
+  if (req.method === 'GET' && url === '/og-image.png') {
+    try { const buf = fs.readFileSync(path.join(__dirname, 'og-image.png')); res.writeHead(200, { 'Content-Type': 'image/png', 'Cache-Control': 'max-age=86400' }); res.end(buf); }
+    catch (e) { res.writeHead(404); res.end(); }
+    return;
+  }
   if (req.method === 'GET' && url.startsWith('/healthz')) { res.writeHead(200, { 'Content-Type': 'text/plain' }); res.end('ok'); return; }
   if (req.method === 'GET' && (url === '/' || url.startsWith('/?') || url.startsWith('/index.html'))) {
-    try { res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }); res.end(page()); }
+    try {
+      const out = page(req), gz = /\bgzip\b/.test(req.headers['accept-encoding'] || '');
+      const h = { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache', 'Vary': 'Accept-Encoding' };
+      if (gz) { const z = zlib.gzipSync(out, { level: 6 }); res.writeHead(200, { ...h, 'Content-Encoding': 'gzip', 'Content-Length': z.length }); res.end(z); }
+      else { res.writeHead(200, h); res.end(out); }
+    }
     catch (e) { res.writeHead(500, { 'Content-Type': 'text/plain' }); res.end('Could not read cage-cup.html next to server.js'); }
     return;
   }
@@ -228,24 +286,40 @@ function parse(c) {
   }
 }
 
+// quick match: one open room waits for the next player who asks for a match; when they meet, the match starts by itself
+let quickWait = null;
 function join(c, params, req) {
   const want = (params.get('room') || '').toUpperCase();
   let code, room;
-  if (params.get('create')) {
+  if (params.get('quick')) {
+    const w = quickWait;
+    if (w && rooms.get(w.code) === w && w.host && !w.guest && !w.match && !w.host.sock.destroyed) { room = w; code = w.code; quickWait = null; }
+    else {
+      if (rooms.size >= MAX_ROOMS) { send(c, { t: 'hello', role: 'full' }); setTimeout(() => c.sock.end(), 200); return; }
+      code = newCode(); room = { host: null, guest: null, code, match: null, quick: true };
+      rooms.set(code, room); quickWait = room;
+    }
+  } else if (params.get('create')) {
     if (rooms.size >= MAX_ROOMS) { send(c, { t: 'hello', role: 'full' }); setTimeout(() => c.sock.end(), 200); return; }
     code = newCode(); room = { host: null, guest: null, code, match: null };
     rooms.set(code, room);
   } else {
     room = rooms.get(want); code = want;
+    if (room && room.quick) room = null;   // quick-match rooms can't be joined by code
     if (!room) { send(c, { t: 'hello', role: 'none' }); setTimeout(() => c.sock.end(), 200); return; }
   }
   const role = !room.host ? 'host' : !room.guest ? 'guest' : 'full';
   if (role === 'full') { send(c, { t: 'hello', role: 'full' }); setTimeout(() => c.sock.end(), 200); return; }
   c.role = role; c.room = room; c.ready = false; room[role] = c;
-  send(c, { t: 'hello', role, room: code, link: `${baseUrl(req)}/?room=${code}`, urls: lanUrls() });
+  send(c, { t: 'hello', role, room: code, link: room.quick ? '' : `${baseUrl(req)}/?room=${code}`, urls: lanUrls(), quick: !!room.quick });
   console.log(`  [${code}] ${role} joined (${rooms.size} room${rooms.size === 1 ? '' : 's'} open)`);
   const peer = other(c);
   if (peer) { send(c, { t: 'peer', present: true }); send(peer, { t: 'peer', present: true }); if (peer.ready) send(c, { t: 'ready', v: true }); }
+  // matched strangers: kick off after a short "opponent found" beat (no ready buttons for the first match)
+  if (room.quick && room.host && room.guest && !room.match && !room.started) {
+    room.started = true;
+    setTimeout(() => { if (rooms.get(room.code) === room && room.host && room.guest && !room.match) startMatch(room); }, 1800);
+  }
 }
 function leave(c) {
   if (c.gone) return; c.gone = true;
@@ -254,7 +328,13 @@ function leave(c) {
   stopMatch(room);
   const peer = other(c);
   if (peer) { peer.ready = false; send(peer, { t: 'peer', present: false }); }
+  if (quickWait === room) quickWait = null;
   if (!room.host && !room.guest) rooms.delete(room.code);
+  else if (room.quick && !room.match) {   // quick match: whoever is left goes back into the queue (as the host side)
+    if (!room.host && room.guest) { room.host = room.guest; room.guest = null; room.host.role = 'host'; room.host.ready = false; send(room.host, { t: 'hello', role: 'host', room: room.code, link: '', urls: [], quick: true }); }
+    else if (room.host) { room.host.ready = false; send(room.host, { t: 'hello', role: 'host', room: room.code, link: '', urls: [], quick: true }); }
+    room.started = false; if (!quickWait) quickWait = room;
+  }
   console.log(`  [${room.code}] ${c.role} left`);
 }
 
@@ -285,7 +365,7 @@ setInterval(() => {
 
 server.listen(PORT, '0.0.0.0', () => {
   try { engineSource(); } catch (e) { console.error('  ' + e.message); }
-  console.log('\n  Cage Cup server is running.\n');
+  console.log('\n  Boot Rivals server is running.\n');
   console.log(`  Open:  http://localhost:${PORT}`);
   const urls = lanUrls();
   if (urls.length) console.log(`  On your Wi-Fi: ${urls[0]}`);
