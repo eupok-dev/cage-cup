@@ -396,6 +396,8 @@ body.mobplay #mP.hid{display:none}
 #mHint{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);font:900 13px var(--display);letter-spacing:.06em;color:#ffb627;text-shadow:0 1px 3px #000;pointer-events:none;white-space:nowrap}
 #mSheet{position:absolute;inset:0;background:rgba(8,17,24,.86);display:none;align-items:center;justify-content:center;z-index:9;touch-action:auto}
 #mSheet.open{display:flex}
+.errlog{display:none;margin:0;font:500 11px/1.4 ui-monospace,monospace;color:var(--muted);white-space:pre-wrap;max-height:120px;overflow:auto}
+body.dev .errlog{display:block}
 #mSheet .msheet{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px;max-width:min(560px,92vw);max-height:90dvh;overflow:auto}
 #mSheet .row{display:flex;gap:8px;flex-wrap:wrap}
 #mSheet .mform{flex:1;min-width:110px;background:var(--panel2);color:var(--chalk);border:1px solid var(--line);border-radius:8px;padding:8px;font:800 15px var(--display);text-transform:uppercase}
@@ -673,6 +675,7 @@ details.hint summary{cursor:pointer;font-family:var(--display);font-weight:800;f
           <div id="mHowWrap" hidden><button class="btn ghost small mhowbtn" id="mHowBtn" aria-expanded="false">How to play full screen <span class="chev">▾</span></button><div id="mHow" hidden></div></div>
           <div class="row"><button class="btn ghost small" id="mNames">Names: off</button><button class="btn small" id="mClose">Back to match</button></div>
           <div id="mEnd"></div>
+          <pre class="errlog" id="errLog"></pre>
         </div></div>
       </div>
     </div>
@@ -856,7 +859,7 @@ function newMatch(home,away,o){
   ents.forEach((e,i)=>e.i=i);
   const human=o.human||[false,false];
   M={ents,ball:{x:W/2,y:H/2,vx:0,vy:0,owner:null,kind:null,rolled:new Set(),lastTeam:null,target:null,loft:0,power:false,from:null},
-    score:[0,0],t:0,dur:o.dur||600,golden:false,freeze:0,countdown:o.countdown||0,banner:'',bannerT:0,bannerTeam:-1,
+    score:[0,0],t:0,dur:o.dur||240,golden:false,freeze:0,countdown:o.countdown||0,banner:'',bannerT:0,bannerTeam:-1,
     demo:!!o.demo,human,local:o.local||0,names:o.names||['Yellow','Red'],kits:(o.kits||['yellow','red']).map(k=>KITS[k]||KITS.yellow),onEnd:o.onEnd,over:false,
     ctrl:[null,null],acts:[[],[]],inp:[newInput(),newInput()],pops:[],
     play:[null,null],playCd:human.map(h=>h?0:15),warp:[0,0],warpCd:human.map(h=>h?0:10),diveCd:[0,0],pressT:[0,0],press:[null,null],swapT:[-9,-9],
@@ -1890,6 +1893,9 @@ function applyRemoteInput(T,m){
 
 
 
+
+
+
 // ---------- local input ----------
 const LI=newInput();
 let mode=null,stage='menu';
@@ -2063,6 +2069,7 @@ function g3Watch(el){
   el.addEventListener('webglcontextlost',ev=>{ev.preventDefault();G3.lost=true;G3.lostAt=performance.now();el.style.display='none';document.body.classList.remove('g3d')},false);
   el.addEventListener('webglcontextrestored',()=>{G3.lost=false;G3.field='';G3.m=null;document.body.classList.toggle('g3d',g3Active())},false);
 }
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)G3.wdT=1.9});   // back from another app: check the 3D view straight away
 function g3Recover(){
   // context still gone after a while: throw the renderer away and build a new one
   if(!G3.lost||performance.now()-G3.lostAt<2500||G3.rebuilding)return;
@@ -2472,6 +2479,12 @@ function g3Frame(fdt,now,cam){
   cm.left=-hw;cm.right=hw;cm.top=hh;cm.bottom=-hh;cm.updateProjectionMatrix();
   cm.position.set(V.tx,G3.S*2000,V.ty+G3.C*2000);cm.lookAt(V.tx,0,V.ty);
   R.render(G3.scene,cm);
+  // watchdog: Safari can stop drawing a WebGL canvas without reporting it. If the middle of the view is pure black
+  // or nothing but the background colour twice running, rebuild the renderer.
+  G3.wdT=(G3.wdT||0)+fdt;
+  if(G3.wdT>2){G3.wdT=0;try{const gl=R.getContext(),px=new Uint8Array(4);gl.readPixels(w>>1,h>>1,1,1,gl.RGBA,gl.UNSIGNED_BYTE,px);
+    const bg=Math.abs(px[0]-10)<3&&Math.abs(px[1]-19)<3&&Math.abs(px[2]-26)<3||Math.abs(px[0]-5)<3&&Math.abs(px[1]-9)<3&&Math.abs(px[2]-13)<3;
+    if(px[0]+px[1]+px[2]<6||bg){G3.bad=(G3.bad||0)+1;if(G3.bad>=2){G3.bad=0;noteErr('3d','blank 3D view, rebuilding');G3.lost=true;G3.lostAt=performance.now()-3000}}else G3.bad=0}catch(e){}}
 }
 // the 2D transform that matches the 3D camera
 function g3Apply(cam){
@@ -2523,7 +2536,7 @@ function draw(){
   const mine=human&&M.human[L]?M.ctrl[L]:null,theirs=human&&M.human[1-L]?M.ctrl[1-L]:null;
   const nowT=performance.now(),fdt=Math.min(0.05,(nowT-(draw.t||nowT))/1000);draw.t=nowT;
   {const bo=M.ball.owner;if(draw.po&&draw.po!==bo&&!bo&&M.ball.kind)draw.po._kick=nowT;draw.po=bo} // kick pose
-  if(g3)g3Frame(fdt,nowT,cam);
+  if(g3){try{g3Frame(fdt,nowT,cam)}catch(err){noteErr('3d',err);G3.lost=true;G3.lostAt=performance.now()-3000}}
   for(const e of [...M.ents].sort((a,b)=>a.y-b.y)){
     if(cam){ctx.save();ctx.translate(e.x,e.y);ctx.scale(PSC,PSC);ctx.translate(-e.x,-e.y)}
     if(e===mine){
@@ -2848,7 +2861,7 @@ function maybeStart(){}
 function beginPvp(teams){
   net.myReady=net.peerReady=false;
   const local=net.role==='host'?0:1;
-  M=newMatch(teams[0],teams[1],{kits:['barca','madrid'],human:[true,true],local,names:['Barcelona','Real Madrid'],dur:600,countdown:3,
+  M=newMatch(teams[0],teams[1],{kits:['barca','madrid'],human:[true,true],local,names:['Barcelona','Real Madrid'],dur:240,countdown:3,
     onEnd:()=>{}});
   M.inp[local]=LI;
   M.guest=true;G.buf=[];G.hist=[];G.pred=null;G.seq=0;G.kick=null;
@@ -3043,7 +3056,7 @@ function startAI(dk){
   const D=DIFFS[aiDiff];let home,away,opts;
   if(aiTeam==='random'){home=makeTeam(5);away=makeTeam(D.lvl);opts={kits:['yellow','red'],names:['Cage FC',pick(PRE)+' '+pick(SUF)]}}
   else{const other=aiTeam==='barca'?'madrid':'barca';home=makeStarTeam(aiTeam);away=makeStarTeam(other,D.off);opts={kits:[aiTeam,other],names:[STARS[aiTeam].short,STARS[other].short]}}
-  M=newMatch(home,away,{...opts,diff:aiDiff,human:[true,false],local:0,dur:600,countdown:3,onEnd:sc=>setTimeout(()=>showResult(sc),300)});
+  M=newMatch(home,away,{...opts,diff:aiDiff,human:[true,false],local:0,dur:240,countdown:3,onEnd:sc=>setTimeout(()=>showResult(sc),300)});
   M.inp[0]=LI;
   setStage('match');
 }
@@ -3263,19 +3276,28 @@ $('#tutExit').onclick=()=>{if(careerTut){careerTut=false;$('#tut').hidden=true;o
 
 // ---------- loop ----------
 let last=performance.now(),sendAcc=0;
+// errors never stop the game: every part of a frame runs on its own, and the next frame is booked first.
+// The last few errors are kept (dev mode shows them in the menu) so a problem on a phone can be reported.
+const ERRS=(()=>{try{return JSON.parse(localStorage.getItem('cagecup.errs')||'[]')}catch(e){return[]}})();
+function noteErr(where,err){const m=new Date().toTimeString().slice(0,8)+' '+where+': '+((err&&err.message)||String(err)).slice(0,160);
+  if(ERRS.length&&ERRS[ERRS.length-1].slice(9)===m.slice(9))return;ERRS.push(m);if(ERRS.length>8)ERRS.shift();
+  try{localStorage.setItem('cagecup.errs',JSON.stringify(ERRS))}catch(e){}try{console.error(err)}catch(e){}}
+window.addEventListener('error',ev=>noteErr('page',ev.error||ev.message));
+window.addEventListener('unhandledrejection',ev=>noteErr('async',ev.reason));
+const safe=(where,f)=>{try{f()}catch(err){noteErr(where,err)}};
 function loop(now){
-  const dt=Math.min(0.033,(now-last)/1000);last=now;
-  if(stage==='cut'){if(G3.el)G3.el.style.display='none';cutTick(dt);cutDraw();sndWatch();requestAnimationFrame(loop);return}
-  if(M){
+  requestAnimationFrame(loop);
+  const dt=Math.min(0.033,Math.max(0,(now-last)/1000));last=now;
+  if(stage==='cut'){safe('cutscene',()=>{if(G3.el)G3.el.style.display='none';cutTick(dt);cutDraw()});safe('sound',sndWatch);return}
+  if(M)safe('game',()=>{
     if(M.guest){if(!M.over){guestTick(dt);sendInput()}}
     else if(!M.over){
       update(dt);
       if(mode==='tut')tutTick(dt);
       if(mode==='pvp'&&!M.demo&&net.role==='host'&&M){sendAcc+=dt;if(sendAcc>=1/30){sendAcc=0;nsend(snap())}}
     }
-  }
-  draw();hud();sndWatch();
-  requestAnimationFrame(loop);
+  });
+  safe('draw',draw);safe('hud',hud);safe('sound',sndWatch);
 }
 // ---------- mobile touch controls ----------
 // left thumb: floating stick (push to the edge = sprint). right thumb: context buttons you can drag to aim.
@@ -3384,7 +3406,7 @@ function mobSetPlay(on){
   $('#mForms').innerHTML=FORMS.map((f,i)=>`<button class="mform" data-f="${i}">${f.n}<small>${f.shape}</small></button>`).join('');
   $('#mForms').querySelectorAll('.mform').forEach(b=>b.addEventListener('click',()=>act({a:'form',f:+b.dataset.f})));
   $('#mEnd').appendChild($('#endrow'));
-  $('#mMenu').addEventListener('pointerdown',e=>{e.preventDefault();$('#mSheet').classList.add('open')});
+  $('#mMenu').addEventListener('pointerdown',e=>{e.preventDefault();$('#mSheet').classList.add('open');const el=$('#errLog');if(el){el.textContent=ERRS.length?'Recent errors:\n'+ERRS.slice(-5).join('\n'):'No errors recorded.'}});
   $('#mClose').addEventListener('click',()=>{$('#mSheet').classList.remove('open');hideEnd()});
   $('#mNames').addEventListener('click',()=>{showNames=!showNames;$('#mNames').textContent='Names: '+(showNames?'on':'off')});
   $('#tut').addEventListener('click',e=>{if(document.body.classList.contains('mobplay')&&e.target.closest('h3'))$('#tut').classList.toggle('mmin')});
@@ -3703,7 +3725,7 @@ function beginCareerMatch(i){
   careerClub=i;const C=CLUBS[i];mode='career';
   const home=CR.squad.map(id=>toEng(PBY[id])),away=clubTeam(C);
   const tier=i<3?0:i<7?1:2;
-  M=newMatch(home,away,{kits:[CR.kit,awayKit(C.kit)],names:[CR.club,C.name],diff:C.diff,human:[true,false],local:0,dur:300,countdown:3,
+  M=newMatch(home,away,{kits:[CR.kit,awayKit(C.kit)],names:[CR.club,C.name],diff:C.diff,human:[true,false],local:0,dur:240,countdown:3,
     tactics:[CR.slots.map(s=>s?{id:s.id,t:s.t}:null),[{id:'overlap',t:tier}]],mods:[talentMods(),{}],
     onEnd:sc=>setTimeout(()=>playCut(postScene(i,sc),i,()=>showResult(sc)),700)});
   M.field=CLUB_GROUND[i];M.inp[0]=LI;setStage('match');$('#testSkip').hidden=false;

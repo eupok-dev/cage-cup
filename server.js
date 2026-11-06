@@ -149,7 +149,7 @@ function startMatch(room) {
   } catch (e) { console.error('  could not start the match engine:', e.message); return; }
   const teams = [api.makeStarTeam('barca'), api.makeStarTeam('madrid')];
   const match = { api, over: null, tick: 0, acc: 0, last: Date.now() };
-  api.newMatch(teams[0], teams[1], { kits: ['barca', 'madrid'], human: [true, true], local: 0, names: ['Barcelona', 'Real Madrid'], dur: 600, countdown: 3, onEnd: sc => { match.over = sc; } });
+  api.newMatch(teams[0], teams[1], { kits: ['barca', 'madrid'], human: [true, true], local: 0, names: ['Barcelona', 'Real Madrid'], dur: 240, countdown: 3, onEnd: sc => { match.over = sc; } });
   room.match = match;
   room.host.ready = room.guest.ready = false;
   for (const c of [room.host, room.guest]) send(c, { t: 'start', teams });
