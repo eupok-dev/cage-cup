@@ -12,6 +12,9 @@ const vm = require('vm');
 const zlib = require('zlib');
 
 const PORT = Number(process.env.PORT) || 8080;
+// the site's official address (search engines, link previews). Override with PUBLIC_URL if it ever changes.
+const PUBLIC_URL = (process.env.PUBLIC_URL || 'https://bootrivals.com').replace(/\/+$/, '');
+// once the domain works, set FORCE_DOMAIN=1 on the host so visits to the old onrender.com address move to the domain
 const GAME = path.join(__dirname, 'cage-cup.html');
 const MAX_ROOMS = 500;
 const TICK = 1 / 60, SNAP_EVERY = 2; // simulate at 60 Hz, send 30 snapshots a second
@@ -36,7 +39,8 @@ const SEO = {
 function publicBase(req) {
   const host = (req && (req.headers['x-forwarded-host'] || req.headers.host)) || `localhost:${PORT}`;
   const local = /^(localhost|127\.0\.0\.1|\[::1\]|\d+\.\d+\.\d+\.\d+)(:|$)/.test(host);
-  const proto = (req && (req.headers['x-forwarded-proto'] || '').split(',')[0]) || (local ? 'http' : 'https');
+  if (!local) return PUBLIC_URL;   // always point search engines at the real domain, whichever address they came in on
+  const proto = (req && (req.headers['x-forwarded-proto'] || '').split(',')[0]) || 'http';
   return `${proto}://${host}`;
 }
 const esc = s => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
@@ -71,7 +75,7 @@ function page(req) {
     '<meta name="theme-color" content="#121318"><meta name="mobile-web-app-capable" content="yes">' +
     '<meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">' +
     '<meta name="apple-mobile-web-app-title" content="Boot Rivals"><link rel="manifest" href="/manifest.webmanifest">' +
-    '<link rel="apple-touch-icon" href="/icon-180.png"><link rel="icon" href="/icon-192.png">' +
+    '<link rel="apple-touch-icon" href="/icon-180.png"><link rel="icon" type="image/png" sizes="32x32" href="/icon-32.png"><link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">' +
     '</head><body>' + body + '</body></html>';
 }
 let engineCache = null;
@@ -110,6 +114,11 @@ const seen = new Map();
 function onlineCount() { const cut = Date.now() - 70000; for (const [k, t] of seen) if (t < cut) seen.delete(k); return seen.size; }
 const server = http.createServer((req, res) => {
   const url = req.url || '/';
+  // old address -> new domain (only when switched on, and never for health checks)
+  if (process.env.FORCE_DOMAIN === '1' && (req.method === 'GET' || req.method === 'HEAD') && !url.startsWith('/healthz')) {
+    const host = String(req.headers['x-forwarded-host'] || req.headers.host || '').toLowerCase();
+    if (/\.onrender\.com(:\d+)?$/.test(host)) { res.writeHead(301, { Location: PUBLIC_URL + url }); res.end(); return; }
+  }
   if (req.method === 'GET' && url.split('?')[0] === '/online') {
     try { const id = new URL(url, 'http://x').searchParams.get('id'); if (id && /^[a-z0-9]{6,24}$/i.test(id) && (seen.has(id) || seen.size < 100000)) seen.set(id, Date.now()); } catch (e) {}
     res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify({ n: onlineCount() })); return;
@@ -141,7 +150,7 @@ const server = http.createServer((req, res) => {
     return;
   }
   if (req.method === 'GET' && url === '/manifest.webmanifest') { res.writeHead(200, { 'Content-Type': 'application/manifest+json' }); res.end(MANIFEST); return; }
-  const ic = req.method === 'GET' && /^\/icon-(180|192|512)\.png$/.exec(url);
+  const ic = req.method === 'GET' && /^\/icon-(32|180|192|512)\.png$/.exec(url);
   if (ic) {
     try { const buf = fs.readFileSync(path.join(__dirname, `icon-${ic[1]}.png`)); res.writeHead(200, { 'Content-Type': 'image/png', 'Cache-Control': 'max-age=86400' }); res.end(buf); }
     catch (e) { res.writeHead(404); res.end(); }
@@ -214,7 +223,7 @@ function startMatch(room) {
   } catch (e) { console.error('  could not start the match engine:', e.message); return; }
   const teams = [api.makeStarTeam('barca'), api.makeStarTeam('madrid')];
   const match = { api, over: null, tick: 0, acc: 0, last: Date.now() };
-  api.newMatch(teams[0], teams[1], { kits: ['barca', 'madrid'], human: [true, true], local: 0, names: ['Barcelona', 'Real Madrid'], dur: 240, countdown: 3, onEnd: sc => { match.over = sc; } });
+  api.newMatch(teams[0], teams[1], { kits: ['barca', 'madrid'], human: [true, true], local: 0, names: ['Marea FC', 'Solaris FC'], dur: 240, countdown: 3, onEnd: sc => { match.over = sc; } });
   room.match = match;
   room.host.ready = room.guest.ready = false;
   for (const c of [room.host, room.guest]) send(c, { t: 'start', teams });
