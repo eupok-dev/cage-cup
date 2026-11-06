@@ -433,21 +433,34 @@ body.dev .devtag{display:inline-block}
 }
 
 /* campaign welcome */
-.ob{display:flex;gap:24px;align-items:center;justify-content:center;flex:1;min-height:0;overflow-y:auto;padding:8px}
-.obhero,.obprev{flex:none;display:flex;flex-direction:column;align-items:center;gap:6px;background:radial-gradient(circle at 50% 60%,#2f7e50,#1e5236 70%);border:1px solid var(--line);border-radius:16px;padding:10px}
-.obav{width:240px;height:200px}.obprev .obav{width:300px;height:200px}
-.obtext{max-width:440px;display:flex;flex-direction:column;gap:8px}
-.obtext h2{font:900 34px/1 var(--display);text-transform:uppercase}
-.obtext p{margin:0;color:#c9ccd3;max-width:none}
-.obform{display:flex;flex-direction:column;gap:6px;max-width:420px;width:100%}
-.obform h3{font:900 18px var(--display);text-transform:uppercase;margin-top:6px}
-.obin{width:100%!important;max-width:300px;text-transform:none!important;letter-spacing:0!important;font:600 16px var(--body)!important;text-align:left!important;padding:8px 10px!important}
-.sws{display:flex;gap:6px;flex-wrap:wrap}
-.sw{width:30px;height:30px;border-radius:50%;background:var(--c);border:2px solid rgba(255,255,255,.25);cursor:pointer;color:var(--muted);font-size:12px;padding:0}
-.sw.on{outline:3px solid var(--kit);outline-offset:2px}
+.ob{display:flex;gap:28px;align-items:center;justify-content:center;flex:1;min-height:0;overflow-y:auto;padding:12px}
+.obhero,.obprev{flex:none;display:flex;flex-direction:column;align-items:center;gap:8px;background:#16171c;border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:12px;box-shadow:0 10px 30px rgba(0,0,0,.3)}
+.obav{width:300px;height:230px;display:block;border-radius:12px}
+.obprev .obav{width:300px;height:230px}
+.obcap{font:700 11px var(--body);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.obtext{max-width:460px;display:flex;flex-direction:column;gap:12px}
+.obtext h2{font:900 38px/1 var(--display);text-transform:uppercase}
+.obtext p{margin:0;color:#c9ccd3;max-width:none;line-height:1.5}
+/* customizer */
+.ob1{align-items:flex-start}
+.ob1 .obprev{position:sticky;top:0}
+.obform{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;max-width:640px;width:100%}
+.obsec{display:flex;flex-direction:column;gap:14px;background:var(--panel);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:18px}
+.obsec h3{margin:0;font:800 13px var(--body);letter-spacing:.12em;text-transform:uppercase;color:var(--chalk)}
+.obfield{display:flex;flex-direction:column;gap:8px}
+.obl{font:600 12.5px var(--body);color:var(--muted)}
+.obin{box-sizing:border-box;width:100%;max-width:none;height:42px;padding:0 12px;border-radius:10px;background:var(--panel2);border:1px solid var(--line);color:var(--chalk);font:600 15px var(--body);outline:none;transition:border-color .15s,box-shadow .15s}
+.obin:focus{border-color:var(--kit);box-shadow:0 0 0 3px color-mix(in srgb,var(--kit) 22%,transparent)}
+.obin::placeholder{color:#5d616b}
+.sws{display:flex;gap:8px;flex-wrap:wrap}
+.sw{width:28px;height:28px;border-radius:50%;background:var(--c);border:0;box-shadow:inset 0 0 0 1px rgba(255,255,255,.18);cursor:pointer;color:var(--muted);font-size:11px;padding:0;transition:transform .12s,box-shadow .12s}
+.sw:hover{transform:scale(1.08)}
+.sw.on{box-shadow:inset 0 0 0 1px rgba(255,255,255,.18),0 0 0 2px var(--panel),0 0 0 4px var(--kit)}
 .sw.none{background:var(--panel2)}
-@media (max-width:700px),(max-height:500px){.ob{flex-direction:column;align-items:stretch;justify-content:flex-start}.obhero,.obprev{align-self:center}.obav{width:200px;height:166px}.obprev .obav{width:240px;height:160px}.obtext h2{font-size:26px}}
-@media (max-height:500px) and (min-width:701px){.ob{flex-direction:row;align-items:flex-start}.obprev{position:sticky;top:0}}
+.obacts{grid-column:1/-1;display:flex;justify-content:flex-end;gap:10px}
+@media (max-width:980px){.obform{grid-template-columns:1fr;max-width:420px}}
+@media (max-width:700px),(max-height:500px){.ob{flex-direction:column;align-items:stretch;justify-content:flex-start}.obhero,.obprev{align-self:center}.obav,.obprev .obav{width:240px;height:180px}.obtext h2{font-size:28px}.ob1 .obprev{position:static}.obform{max-width:none}}
+@media (max-height:500px) and (min-width:701px){.ob{flex-direction:row;align-items:flex-start}.obprev{position:sticky;top:0;align-self:flex-start}.obform{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
 /* ---------- cutscenes ---------- */
 #cutBox{position:absolute;left:50%;bottom:max(10px,env(safe-area-inset-bottom));transform:translateX(-50%);width:min(760px,calc(100% - 20px));z-index:8;display:flex;gap:12px;align-items:center;
@@ -709,18 +722,26 @@ details.hint summary{cursor:pointer;font-family:var(--display);font-weight:800;f
 .roomcode{font-family:var(--display);font-size:18px;letter-spacing:.12em;color:var(--chalk)}
 .codein{font-family:var(--display);font-weight:800;font-size:20px;letter-spacing:.14em;text-transform:uppercase;width:7ch;background:var(--panel2);color:var(--chalk);border:1px solid var(--line);border-radius:6px;padding:6px 8px}
 .codein:focus-visible{outline:2px solid var(--kit)}
-.tut{width:100%;display:flex;flex-direction:column;gap:8px;background:var(--panel);border:2px solid var(--kit);border-radius:12px;padding:12px 14px}
+.tut{width:100%;display:flex;flex-direction:column;gap:8px;background:var(--panel);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:12px 14px;transition:border-color .25s,box-shadow .25s}
+.tut.done{border-color:var(--kit);box-shadow:0 0 0 3px color-mix(in srgb,var(--kit) 20%,transparent)}
+/* desktop: the step card floats over the top of the pitch */
+#pitchbox>.tut{position:absolute;top:12px;left:50%;transform:translateX(-50%);width:min(540px,calc(100% - 28px));z-index:7;background:rgba(18,19,24,.88);backdrop-filter:blur(6px);box-shadow:0 8px 24px rgba(0,0,0,.35);padding:10px 14px;gap:6px}
+#pitchbox>.tut.done{box-shadow:0 8px 24px rgba(0,0,0,.35),0 0 0 3px color-mix(in srgb,var(--kit) 20%,transparent)}
+#pitchbox>.tut .tutMain h3{font-size:22px}
+#pitchbox>.tut .tutMain p{font-size:14px;line-height:1.4}
+#pitchbox>.tut .tutDone{font-size:28px}
+body:not(.mob) #tutExit{display:none!important}
 .tutTop{display:flex;justify-content:space-between;align-items:center;gap:10px}
 .tutDots{display:flex;gap:5px}
 .tutDots i{width:9px;height:9px;border-radius:50%;background:var(--panel2);border:1px solid var(--line)}
-.tutDots i.on{background:var(--kit);border-color:var(--kit)} .tutDots i.done{background:var(--good);border-color:var(--good)}
+.tutDots i.on{background:var(--kit);border-color:var(--kit)} .tutDots i.done{background:color-mix(in srgb,var(--kit) 55%,var(--panel2));border-color:transparent}
 .tutMain{display:flex;justify-content:space-between;align-items:center;gap:12px}
 .tutMain h3{font-size:26px;color:var(--kit)}
 .tutMain p{margin-top:4px;max-width:70ch}
 .tutMain kbd{font-family:var(--body);font-weight:700;color:var(--chalk);background:var(--panel2);border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 5px;font-size:13px}
-.tutDone{font-family:var(--display);font-weight:900;font-size:34px;color:var(--good);text-transform:uppercase;flex:none}
+.tutDone{font-family:var(--display);font-weight:900;font-size:34px;color:var(--kit);text-transform:uppercase;flex:none}
 .tutProg{height:6px;background:var(--panel2);border-radius:3px;overflow:hidden}
-.tutProg i{display:block;height:100%;width:0;background:var(--good);transition:width .15s}
+.tutProg i{display:block;height:100%;width:0;background:var(--kit);transition:width .15s}
 .tm .you{font-family:var(--body);font-size:12px;font-weight:700;letter-spacing:.1em;color:var(--chalk);margin-left:6px;vertical-align:middle}
 </style>
 
@@ -807,7 +828,7 @@ details.hint summary{cursor:pointer;font-family:var(--display);font-weight:800;f
       </div>
       <div id="pmenu" hidden role="dialog" aria-label="Match menu"><div class="pmin">
         <h3 id="pmTitle">Paused</h3>
-        <div class="pmbtns"><button class="btn" id="pmResume">Resume</button><button class="btn ghost" id="pmCtl">Controls</button><button class="btn ghost" id="pmSet">Sound settings</button><button class="btn ghost" id="pmNames">Names: off</button></div>
+        <div class="pmbtns"><button class="btn" id="pmResume">Resume</button><button class="btn ghost" id="pmExitTut" hidden>Exit tutorial</button><button class="btn ghost" id="pmCtl">Controls</button><button class="btn ghost" id="pmSet">Sound settings</button><button class="btn ghost" id="pmNames">Names: off</button></div>
         <div id="pmEnd"></div>
         <p class="muted small-note pmhint"><kbd>Esc</kbd> to resume</p>
       </div></div>
@@ -828,7 +849,7 @@ details.hint summary{cursor:pointer;font-family:var(--display);font-weight:800;f
           <div class="row" id="mForms"></div>
           <p class="mtip" id="mTip" hidden></p>
           <div id="mHowWrap" hidden><button class="btn ghost small mhowbtn" id="mHowBtn" aria-expanded="false">How to play full screen <span class="chev">▾</span></button><div id="mHow" hidden></div></div>
-          <div class="row"><button class="btn ghost small" id="mNames">Names: off</button><button class="btn ghost small setbtn2" id="mSet">Sound settings</button><button class="btn small" id="mClose">Back to match</button></div>
+          <div class="row"><button class="btn ghost small" id="mExitTut" hidden>Exit tutorial</button><button class="btn ghost small" id="mNames">Names: off</button><button class="btn ghost small setbtn2" id="mSet">Sound settings</button><button class="btn small" id="mClose">Back to match</button></div>
           <div id="mEnd"></div>
           <pre class="errlog" id="errLog"></pre>
         </div></div>
@@ -2065,6 +2086,12 @@ function applyRemoteInput(T,m){
 
 
 
+
+
+
+
+
+
 // ---------- local input ----------
 const LI=newInput();
 let mode=null,stage='menu';
@@ -2300,7 +2327,7 @@ function g3Recover(){
   G3.rebuilding=true;
   try{if(G3.R)G3.R.dispose()}catch(e){}
   if(G3.el)G3.el.remove();
-  Object.assign(G3,{el:null,R:null,scene:null,cam:null,field:'',fieldG:null,pl:new Map(),ball:null,m:null,geo:null,pg:null,mats:new Map(),ready:false,lost:false,fans:null,fanBase:null});
+  Object.assign(G3,{el:null,R:null,scene:null,cam:null,field:'',fieldG:null,pl:new Map(),ball:null,m:null,geo:null,pg:null,mats:new Map(),ready:false,lost:false,fans:null,fanBase:null,mini:null});
   netTexC=null;g3Init();G3.rebuilding=false;
 }
 function g3Load(cb){
@@ -3048,7 +3075,7 @@ window.addEventListener('keydown',e=>{
   if(stage==='cut'){if(k===' '||k==='enter'){e.preventDefault();cutNext()}else if(k==='escape')cutEnd();return}
   if(!live())return;
   if(mode==='tut'&&T_.done&&k==='enter'){e.preventDefault();$('#tutNext').click();return}
-  if(k==='escape'){if(mode==='tut'||MOB)return;if($('#pmenu').hidden)pmOpen(true);else if(endMode)hideEnd();else pmOpen(false);return}
+  if(k==='escape'){if(MOB)return;if($('#pmenu').hidden)pmOpen(true);else if(endMode)hideEnd();else pmOpen(false);return}
   if(endMode&&k==='enter'){e.preventDefault();$('#endYes').click();return}
   if(!$('#pmenu').hidden)return;
   const A=keyAct(e);if(!A)return;
@@ -3097,7 +3124,7 @@ document.querySelectorAll('.fbtn').forEach(bt=>bt.addEventListener('click',()=>{
 // Matches against the computer stop while it is open; online matches keep running (the other player is still playing).
 var PM_OPEN=false;
 function pmOpen(on){const el=$('#pmenu');if(!el)return;on=!!on&&live();PM_OPEN=on;el.hidden=!on;if(!on){hideEnd();return}
-  $('#pmTitle').textContent=mode==='pvp'?'Match menu':'Paused';$('#pmNames').textContent='Names: '+(showNames?'on':'off');
+  $('#pmTitle').textContent=mode==='pvp'?'Match menu':'Paused';{const t=mode==='tut';$('#pmExitTut').hidden=!t;$('#pmEnd').hidden=t}$('#pmNames').textContent='Names: '+(showNames?'on':'off');
   LI.keys.clear();LI.lmb=LI.rmb=false;if(document.activeElement)document.activeElement.blur()}
 const gamePaused=()=>mode!=='pvp'&&!(M&&M.demo)&&(PM_OPEN||$('#mSheet').classList.contains('open'));
 $('#pmResume').onclick=()=>pmOpen(false);
@@ -3390,7 +3417,7 @@ function setStage(s){
 $('#cutBox').hidden=s!=='cut';if(s!=='match')$('#testSkip').hidden=true;if(s==='cut'){$('#pcards').hidden=true;$('#ctrlbar').hidden=true}
   ov.hidden=s==='match'||s==='cut';
   document.body.classList.toggle('inmatch',s==='match');
-  $('#score').style.visibility=s==='match'||s==='result'?'visible':'hidden';
+  $('#score').style.display=s==='match'||s==='result'?'':'none';   // menus: no empty score row pushing the pitch down
   $('#ctrlbar').hidden=s!=='match';$('#endrow').hidden=s!=='match';hideEnd();{const pp=$('#playPills');if(pp&&s!=='match')pp.hidden=true}if(typeof pmOpen==='function')pmOpen(false);
   $('#touch').style.visibility=s==='match'?'visible':'hidden';
   $('#hint').hidden=s!=='match';
@@ -3625,7 +3652,7 @@ function tutGo(i){
   $('#tutStep').textContent=`Step ${i+1} of ${TUT.length}`;
   const tm=MOB&&TUT_M[i];$('#tutTitle').textContent=tm?tm[0]:TUT[i].t;$('#tutText').innerHTML=tm?tm[1]:TUT[i].d();
   $('#tutDots').innerHTML=TUT.map((_,k)=>`<i class="${k<i?'done':k===i?'on':''}"></i>`).join('');
-  $('#tutDone').hidden=true;$('#tutBar').style.width='0';$('#tutNext').hidden=true;$('#tutSkip').hidden=false;
+  $('#tutDone').hidden=true;$('#tut').classList.remove('done');$('#tutBar').style.width='0';$('#tutNext').hidden=true;$('#tutSkip').hidden=false;
 }
 function tutTick(dt){
   if(T_.done)return;
@@ -3634,7 +3661,7 @@ function tutTick(dt){
   if(f<1&&M.pendingKO!==undefined){M.pendingKO=undefined;T_.resetIn=0.9}
   if(T_.resetIn!==undefined&&f<1){T_.resetIn-=dt;if(T_.resetIn<=0){const n=T_.next;tutReset();if(n!==undefined)T_.next=0.6}}
   $('#tutBar').style.width=(f*100)+'%';
-  if(f>=1){T_.done=true;$('#tutDone').hidden=false;$('#tutDone').textContent=pick(['Nice!','Got it!','Great!']);
+  if(f>=1){T_.done=true;$('#tut').classList.add('done');$('#tutDone').hidden=false;$('#tutDone').textContent=pick(['Nice!','Got it!','Great!']);
     const nb=$('#tutNext');nb.textContent=TUT_I===TUT.length-1?'Finish':'Continue';nb.hidden=false;$('#tutSkip').hidden=true}
 }
 function tutFinish(){
@@ -3668,7 +3695,8 @@ $('#tsWin').onclick=()=>testSkip(true);$('#tsLose').onclick=()=>testSkip(false);
 $('#tutNext').onclick=()=>{if(mode==='tut'&&T_.done){$('#tutNext').blur();tutGo(TUT_I+1)}};
 $('#tutSkip').onclick=()=>{if(mode==='tut'){T_.done=true;tutGo(TUT_I+1)}};
 $('#tutRetry').onclick=()=>{if(mode==='tut')tutReset()};
-$('#tutExit').onclick=()=>{if(careerTut){careerTut=false;$('#tut').hidden=true;openCareer('play')}else toMenu()};
+function tutExit(){pmOpen(false);$('#mSheet').classList.remove('open');if(careerTut){careerTut=false;$('#tut').hidden=true;openCareer('play')}else toMenu()}
+$('#tutExit').onclick=tutExit;$('#pmExitTut').onclick=tutExit;$('#mExitTut').onclick=tutExit;
 
 // ---------- loop ----------
 let last=performance.now(),sendAcc=0;
@@ -3721,7 +3749,7 @@ function mobSetPlay(on){
   else{$('#mSheet').classList.remove('open');try{if(document.fullscreenElement)document.exitFullscreen().catch(()=>{})}catch(e){}}
   requestAnimationFrame(resize);setTimeout(resize,250);
 }
-if(!MOB){$('#pmEnd').appendChild($('#endrow'));$('#formDock .fdslot').appendChild(document.querySelector('.ctrlbar .forms'))}   // desktop: formations sit on the pitch between the play pills   // desktop: end / leave live in the pause menu
+if(!MOB){$('#pitchbox').appendChild($('#tut'));$('#pmEnd').appendChild($('#endrow'));$('#formDock .fdslot').appendChild(document.querySelector('.ctrlbar .forms'))}   // desktop: formations sit on the pitch between the play pills   // desktop: end / leave live in the pause menu
 (function mobile(){
   if(!MOB)return;
   document.body.classList.add('mob');
@@ -3803,7 +3831,7 @@ if(!MOB){$('#pmEnd').appendChild($('#endrow'));$('#formDock .fdslot').appendChil
   $('#mForms').innerHTML=FORMS.map((f,i)=>`<button class="mform" data-f="${i}">${f.n}<small>${f.shape}</small></button>`).join('');
   $('#mForms').querySelectorAll('.mform').forEach(b=>b.addEventListener('click',()=>act({a:'form',f:+b.dataset.f})));
   $('#mEnd').appendChild($('#endrow'));
-  $('#mMenu').addEventListener('pointerdown',e=>{e.preventDefault();$('#mSheet').classList.add('open');const el=$('#errLog');if(el){el.textContent=ERRS.length?'Recent errors:\n'+ERRS.slice(-5).join('\n'):'No errors recorded.'}});
+  $('#mMenu').addEventListener('pointerdown',e=>{e.preventDefault();$('#mSheet').classList.add('open');$('#mExitTut').hidden=mode!=='tut';const el=$('#errLog');if(el){el.textContent=ERRS.length?'Recent errors:\n'+ERRS.slice(-5).join('\n'):'No errors recorded.'}});
   $('#mClose').addEventListener('click',()=>{$('#mSheet').classList.remove('open');hideEnd()});
   $('#mNames').addEventListener('click',()=>{showNames=!showNames;$('#mNames').textContent='Names: '+(showNames?'on':'off')});
   $('#tut').addEventListener('click',e=>{if(document.body.classList.contains('mobplay')&&e.target.closest('h3'))$('#tut').classList.toggle('mmin')});
@@ -4695,6 +4723,9 @@ function onlinePoll(){
 onlinePoll();setInterval(onlinePoll,30000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)onlinePoll()});
 // ---------- version history (newest first; add an entry with every change) ----------
 const VERSIONS=[
+ {v:'2.5',d:'Nov 6, 2026',items:['Campaign intro and club customizer now show the 3D players instead of the old 2D figures','Redesigned customizer: live preview card, Your manager and Your club sections, cleaner inputs and colour swatches, consistent spacing']},
+ {v:'2.4',d:'Nov 6, 2026',items:['Tutorial step card now floats over the top of the pitch and is narrower','Exit tutorial moved into the Esc menu (and the phone menu)','The card only lights up green when you complete a step; progress bar uses the neon green']},
+ {v:'2.3',d:'Nov 6, 2026',items:['Menus: removed the empty gap between the header and the game screen']},
  {v:'2.2',d:'Nov 6, 2026',items:['New main menu: Quick Play first, then Campaign and Tutorial','Quick Play: Play vs AI or Play vs Person','Play vs Person: Find me a match (pairs you with the next player searching), Host a game, or Join with link','Matched games kick off automatically, no ready buttons']},
  {v:'2.1',d:'Nov 6, 2026',items:['Search engine optimisation: page titles and descriptions in all six languages, link previews with an image, structured data, robots.txt and a sitemap','Links like ?lang=es open the game in that language','Short description of the game in the footer','The game page is sent compressed, so it loads faster']},
  {v:'2.0',d:'Nov 6, 2026',items:['Cage Cup is now Boot Rivals: new name on the logo, menus, packs, page title and home-screen app','In the campaign story, the trophy you chase is now the Rivals Cup']},
@@ -4775,32 +4806,78 @@ function renderWelcome(){
       <div class="row"><button class="btn" data-ob="next">Get started</button></div></div></div>`;
   if(obStep===1){
     const sw=(arr,cur,key)=>arr.map(([v,n],i)=>`<button class="sw${v===cur||i===cur?' on':''}" data-pick="${key}:${typeof cur==='number'?i:v}" title="${n}" style="--c:${v||'transparent'}">${v?'':'—'}</button>`).join('');
-    return `<div class="ob ob1"><div class="obprev"><canvas class="obav" width="300" height="200" data-ob="preview"></canvas><span class="muted">Live preview</span></div>
+    const fld=(lab,inner,id)=>`<div class="obfield">${id?`<label class="obl" for="${id}">${lab}</label>`:`<span class="obl">${lab}</span>`}${inner}</div>`;
+    const swr=(arr,on,key,isIdx)=>`<div class="sws">${arr.map((x,i)=>{const v=Array.isArray(x)?x[0]:x,n=Array.isArray(x)?x[1]:'';const sel=isIdx?i===on:v===on;return `<button class="sw${sel?' on':''}${v?'':' none'}" data-pick="${key}:${isIdx?i:v}"${n?` title="${n}" aria-label="${n}"`:''} style="--c:${v||'transparent'}">${v?'':'✕'}</button>`}).join('')}</div>`;
+    return `<div class="ob ob1"><div class="obprev"><canvas class="obav" width="340" height="260" data-ob="preview"></canvas><span class="obcap">Live preview</span></div>
       <div class="obform">
-        <h3>Your manager</h3>
-        <label class="label" for="obName">Name</label><input id="obName" class="codein obin" maxlength="18" value="${(m.name||'').replace(/"/g,'')}" placeholder="The Gaffer">
-        <span class="label">Skin</span><div class="sws">${SKINC.map((v,i)=>`<button class="sw${i===m.skin?' on':''}" data-pick="skin:${i}" style="--c:${v}"></button>`).join('')}</div>
-        <span class="label">Hair</span><div class="sws">${HAIRC.map((v,i)=>`<button class="sw${i===m.hair?' on':''}" data-pick="hair:${i}" style="--c:${v}"></button>`).join('')}</div>
-        <span class="label">Suit</span><div class="sws">${SUITS.map(([v,n],i)=>`<button class="sw${i===m.suit?' on':''}" data-pick="suit:${i}" title="${n}" style="--c:${v}"></button>`).join('')}</div>
-        <h3>Your club</h3>
-        <label class="label" for="obClub">Team name</label><input id="obClub" class="codein obin" maxlength="20" value="${(CR.club||'').replace(/"/g,'')}" placeholder="Cage FC">
-        <span class="label">Shirt colour</span><div class="sws">${KIT_COLS.map(([v,n])=>`<button class="sw${v===c.main?' on':''}" data-pick="main:${v}" title="${n}" style="--c:${v}"></button>`).join('')}</div>
-        <span class="label">Stripes</span><div class="sws">${TRIMS.map(([v,n])=>`<button class="sw${v===c.trim?' on':''}${v?'':' none'}" data-pick="trim:${v}" title="${n}" style="--c:${v||'transparent'}">${v?'':'✕'}</button>`).join('')}</div>
-        <div class="row"><button class="btn" data-ob="save">Continue</button>${CR.ob?'<button class="btn ghost" data-ob="cancel">Cancel</button>':''}</div>
+        <section class="obsec"><h3>Your manager</h3>
+          ${fld('Name',`<input id="obName" class="obin" maxlength="18" value="${(m.name||'').replace(/"/g,'')}" placeholder="The Gaffer">`,'obName')}
+          ${fld('Skin',swr(SKINC,m.skin,'skin',true))}
+          ${fld('Hair',swr(HAIRC,m.hair,'hair',true))}
+          ${fld('Suit',swr(SUITS,m.suit,'suit',true))}
+        </section>
+        <section class="obsec"><h3>Your club</h3>
+          ${fld('Team name',`<input id="obClub" class="obin" maxlength="20" value="${(CR.club||'').replace(/"/g,'')}" placeholder="Cage FC">`,'obClub')}
+          ${fld('Shirt colour',swr(KIT_COLS,c.main,'main',false))}
+          ${fld('Stripes',swr(TRIMS,c.trim,'trim',false))}
+        </section>
+        <div class="obacts">${CR.ob?'<button class="btn ghost" data-ob="cancel">Cancel</button>':''}<button class="btn" data-ob="save">Continue</button></div>
       </div></div>`;
   }
   return `<div class="ob ob2"><div class="obhero"><canvas class="obav" width="240" height="200" data-ob="scene"></canvas></div><div class="obtext"><span class="label">One more thing</span><h2>Want a quick tutorial?</h2>
      <p>Eight short steps: moving, sprinting, passing, shooting, tackling, set plays and keeper dives. About two minutes.</p>
      <div class="row"><button class="btn" data-ob="tut">Yes, show me</button><button class="btn ghost" data-ob="skip">No, start the campaign</button></div></div></div>`;
 }
+// welcome screens: the squad and the live preview are rendered with the same 3D players as the matches.
+// (Falls back to the old flat drawing only while the 3D view isn't ready.)
+function g3Mini(cv2,people,o){
+  if(!g3Active()||!G3.el||!G3.el.width)return false;
+  const T=THREE,R=G3.R;
+  if(!G3.mini){const sc=new T.Scene();sc.add(new T.HemisphereLight(0xeef3ff,0x2a3324,0.62));const sun=new T.DirectionalLight(0xfff4e0,0.95);sun.position.set(-0.5,1,0.9);sc.add(sun);
+    const turf=new T.Mesh(new T.CircleGeometry(1,40),new T.MeshBasicMaterial({color:0x2c7a4d}));turf.rotation.x=-Math.PI/2;sc.add(turf);
+    const ring=new T.Mesh(new T.RingGeometry(0.93,1,40),new T.MeshBasicMaterial({color:0x3a9a62}));ring.rotation.x=-Math.PI/2;ring.position.y=0.05;sc.add(ring);
+    G3.mini={sc,pl:[],turf,ring}}
+  const Mi=G3.mini;
+  while(Mi.pl.length<people.length){const P=g3Player();G3.scene.remove(P.g);Mi.sc.add(P.g);P.ring.visible=false;Mi.pl.push(P)}
+  const M0=M;M={ball:{x:0,y:90,owner:null,vx:0,vy:0},t:0,ctrl:[null,null],local:0,demo:true,ents:[]};
+  try{
+    Mi.pl.forEach((P,k)=>{const q=people[k];P.g.visible=!!q;if(!q)return;
+      const e={p:{name:q.name||'x'},gk:!!q.gk,team:0,skin:q.skin,hair:q.hair,x:q.x,y:q.z,vx:0,vy:0,fx:0,fy:1,slide:0,dive:0,stun:0,skill:0,skillWU:0,lunge:0,recover:0,burst:0,tq:null,touch:null,sdx:0,sdy:1,ddx:0,ddy:1};
+      P.key='';g3Paint(P,e,q.kit);
+      if(q.mgr){const su=g3m(q.kit.main);for(const kk of['shortL','thigh','shin','upper','fore','sleeve'])for(const m of P.m[kk])m.material=su;P.m.pelvis.material=su;
+        if(!P.tie){P.tie=new T.Mesh(new T.BoxGeometry(0.9,5,0.5),g3m('#e5484d'));P.tie.position.set(0,6.4,2.15);P.spine.add(P.tie)}P.tie.visible=true}else if(P.tie)P.tie.visible=false;
+      P.yaw=q.yaw||0;for(let n=0;n<14;n++)g3Pose(P,e,0.05,n*50);
+      P.g.position.set(q.x,0,q.z);P.g.scale.setScalar(1);P.g.rotation.y=q.yaw||0});
+  }finally{M=M0}
+  Mi.turf.scale.setScalar(o.turf);Mi.ring.scale.setScalar(o.turf);
+  // camera framed on the group, slightly above; render into the shared canvas, then copy the middle into the small one
+  const w=G3.el.width,h=G3.el.height,A=w/h,dpr=Math.min(2,window.devicePixelRatio||1);
+  const cw=Math.max(60,Math.round((cv2.clientWidth||cv2.width)*dpr)),ch=Math.max(40,Math.round((cv2.clientHeight||cv2.height)*dpr));cv2.width=cw;cv2.height=ch;
+  const a=cw/ch,hh=o.half,cam=new T.OrthographicCamera(-hh*A,hh*A,hh,-hh,1,2000);
+  cam.position.set(0,o.camY,400);cam.lookAt(0,o.lookY,0);
+  R.setClearColor(o.bg);R.render(Mi.sc,cam);
+  const g=cv2.getContext('2d'),sw=Math.min(w,h*a),sx=(w-sw)/2;g.clearRect(0,0,cw,ch);g.drawImage(G3.el,sx,0,sw,h,0,0,cw,ch);
+  R.setClearColor(g3Bg());if(G3.cam&&G3.view)R.render(G3.scene,G3.cam);
+  return true;
+}
 function drawWelcome(root){
-  root.querySelectorAll('canvas[data-ob]').forEach(cv=>{const g=cv.getContext('2d');g.clearRect(0,0,cv.width,cv.height);const m=mgrLook();
-    const kit=KITS.mine||KITS.yellow,you={main:SUITS[m.suit][0],ring:'#eef1e8',label:'#eef1e8',gk:SUITS[m.suit][0]};
-    const fig=(x,y,k,p,fy,extra={})=>{g.save();g.translate(x,y);g.scale(3,3);drawChibi({x:0,y:0,vx:0,vy:0,fx:0,fy,p,stun:0,slide:0,dive:0,burst:0,...extra},k,0,0,g);g.restore()};
-    if(cv.dataset.ob==='preview'){fig(90,105,you,{name:'mgr',num:''},1,{skin:SKINC[m.skin],hair:HAIRC[m.hair]});fig(215,105,kit,{name:'Kev Ashby',num:8},1)}
-    else{const sq=['Benny Holt','Dougie Platt','Ray Mundy','Kev Ashby','Lenny Coyle','Sid Ferris'];const P=[[50,45],[120,35],[190,45],[60,105],[130,100],[195,110]];
-      g.save();g.scale(0.72,0.72);g.translate(25,10);sq.forEach((n,k)=>fig(P[k][0]*1.15,P[k][1]*1.15+10,kit,{name:n,num:[1,4,5,8,7,9][k]},1,{gk:k===0}));g.restore();fig(120,165,you,{name:'mgr',num:''},-1,{skin:SKINC[m.skin],hair:HAIRC[m.hair]})}
+  const m=mgrLook(),kit=KITS.mine||KITS.yellow,you={main:SUITS[m.suit][0],ring:'#eef1e8',label:'#eef1e8',gk:SUITS[m.suit][0]};
+  const mgr={name:'mgr',mgr:true,kit:you,skin:SKINC[m.skin],hair:HAIRC[m.hair]};
+  let pending=false;
+  root.querySelectorAll('canvas[data-ob]').forEach(cv=>{
+    const prev=cv.dataset.ob==='preview';
+    const people=prev?[{...mgr,x:-11,z:0,yaw:0.28},{name:'Kev Ashby',kit,x:11,z:0,yaw:-0.28}]
+      :[{name:'Benny Holt',kit,gk:true,x:-27,z:-20},{name:'Dougie Platt',kit,x:-9,z:-24},{name:'Ray Mundy',kit,x:9,z:-24},{name:'Kev Ashby',kit,x:27,z:-20},{name:'Lenny Coyle',kit,x:-18,z:-6},{name:'Sid Ferris',kit,x:18,z:-6},{...mgr,x:0,z:12}];
+    const ok=g3Mini(cv,people,prev?{half:25,camY:150,lookY:17,turf:30,bg:0x16171c}:{half:34,camY:190,lookY:12,turf:44,bg:0x16171c});
+    if(!ok){pending=true;
+      const g=cv.getContext('2d');g.clearRect(0,0,cv.width,cv.height);
+      const fig=(x,y,k,p,fy,extra={})=>{g.save();g.translate(x,y);g.scale(3,3);drawChibi({x:0,y:0,vx:0,vy:0,fx:0,fy,p,stun:0,slide:0,dive:0,burst:0,...extra},k,0,0,g);g.restore()};
+      if(prev){fig(90,105,you,{name:'mgr',num:''},1,{skin:SKINC[m.skin],hair:HAIRC[m.hair]});fig(215,105,kit,{name:'Kev Ashby',num:8},1)}
+      else{const sq=['Benny Holt','Dougie Platt','Ray Mundy','Kev Ashby','Lenny Coyle','Sid Ferris'];const P=[[50,45],[120,35],[190,45],[60,105],[130,100],[195,110]];
+        g.save();g.scale(0.72,0.72);g.translate(25,10);sq.forEach((n,k)=>fig(P[k][0]*1.15,P[k][1]*1.15+10,kit,{name:n,num:[1,4,5,8,7,9][k]},1,{gk:k===0}));g.restore();fig(120,165,you,{name:'mgr',num:''},-1,{skin:SKINC[m.skin],hair:HAIRC[m.hair]})}}
   });
+  // the 3D view loads a moment after the page: redraw in 3D once it's ready
+  clearTimeout(drawWelcome.t);if(pending)drawWelcome.t=setTimeout(()=>{if(root.isConnected)drawWelcome(root)},400);
 }
 function wireWelcome(el){
   el.querySelectorAll('[data-pick]').forEach(b=>b.onclick=()=>{const[k,v]=b.dataset.pick.split(':');const m={...mgrLook()};CR.colors=CR.colors||{main:'#ffb627',trim:''};
