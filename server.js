@@ -65,8 +65,15 @@ const MANIFEST = JSON.stringify({
   background_color: '#0d1820', theme_color: '#0d1820',
   icons: [{ src: '/icon-192.png', sizes: '192x192', type: 'image/png' }, { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' }]
 });
+// players online: every open game checks in about every 30s with a random id; count the ids seen in the last 70s
+const seen = new Map();
+function onlineCount() { const cut = Date.now() - 70000; for (const [k, t] of seen) if (t < cut) seen.delete(k); return seen.size; }
 const server = http.createServer((req, res) => {
   const url = req.url || '/';
+  if (req.method === 'GET' && url.split('?')[0] === '/online') {
+    try { const id = new URL(url, 'http://x').searchParams.get('id'); if (id && /^[a-z0-9]{6,24}$/i.test(id) && (seen.has(id) || seen.size < 100000)) seen.set(id, Date.now()); } catch (e) {}
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify({ n: onlineCount() })); return;
+  }
   if (req.method === 'GET' && url.startsWith('/version')) {
     try { res.writeHead(200, { 'Content-Type': 'text/plain', 'Cache-Control': 'no-store' }); res.end(gameVersion()); } catch (e) { res.writeHead(500); res.end(); }
     return;
