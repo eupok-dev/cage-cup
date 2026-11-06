@@ -168,7 +168,8 @@ function startMatch(room) {
       api.update(TICK);
       match.tick++;
       if (match.over || match.tick % SNAP_EVERY === 0) {
-        const s = JSON.stringify(api.snap());
+        const o = api.snap(); o.st = Math.round(match.tick * TICK * 1000);   // server sim time (ms): players time their playback by this, not by arrival
+        const s = JSON.stringify(o);
         if (room.host) sendRaw(room.host, s);
         if (room.guest) sendRaw(room.guest, s);
       }

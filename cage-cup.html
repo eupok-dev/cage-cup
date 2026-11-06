@@ -2035,6 +2035,8 @@ function applyRemoteInput(T,m){
 
 
 
+
+
 // ---------- local input ----------
 const LI=newInput();
 let mode=null,stage='menu';
@@ -3172,7 +3174,7 @@ function beginPvp(teams){
   M=newMatch(teams[0],teams[1],{kits:['barca','madrid'],human:[true,true],local,names:['Barcelona','Real Madrid'],dur:240,countdown:3,
     onEnd:()=>{}});
   M.inp[local]=LI;
-  M.guest=true;G.buf=[];G.hist=[];G.pred=null;G.seq=0;G.kick=null;
+  M.guest=true;CLK.d=[];CLK.off=null;CLK.delay=70;G.buf=[];G.hist=[];G.pred=null;G.seq=0;G.kick=null;
   net.outbox=[];
   setStage('match');header();
 }
@@ -3191,9 +3193,22 @@ function applySnap(s){
 }
 // ---- guest smoothing: interpolate everyone ~100ms behind, predict your own player ----
 const INTERP_MS=80;
+// Snapshots carry the server's own clock (st). We play them back against that clock, so updates that arrive in bursts
+// (common through hosting proxies) still play evenly. The delay adapts to how bursty the connection is.
+const CLK={d:[],off:null,delay:70};
 const G={buf:[],seq:0,hist:[],pred:null,corrX:0,corrY:0,sent:new Map(),rtt:0,ownBall:false};
 function recvSnap(s){
-  G.buf.push({at:performance.now(),s});
+  const now=performance.now();let T=now;
+  if(Number.isFinite(s.st)){
+    if(G.buf.length&&G.buf[G.buf.length-1].s.st>s.st+500)CLK.d.length=0;   // new match: the server clock restarted
+    const d=now-s.st;CLK.d.push(d);if(CLK.d.length>90)CLK.d.shift();
+    const srt=[...CLK.d].sort((a,b)=>a-b),mn=srt[0],p90=srt[Math.floor(srt.length*0.92)];
+    CLK.off=CLK.off==null||Math.abs(CLK.off-mn)>250?mn:CLK.off+(mn-CLK.off)*0.05;
+    const want=clamp(45+(p90-mn)*1.1,55,220);CLK.delay+=(want-CLK.delay)*(want>CLK.delay?0.25:0.02);
+    T=s.st+CLK.off;   // when this snapshot "should" have arrived on a steady connection
+  }
+  if(G.buf.length&&T<G.buf[G.buf.length-1].at)T=G.buf[G.buf.length-1].at+1;
+  G.buf.push({at:T,rcv:now,s});
   if(G.buf.length>40)G.buf.shift();
   net.snapAt=performance.now();
   // reconcile our predicted player against the host's position at the last input it processed
@@ -3221,7 +3236,7 @@ function smoothDisplay(dt){
     let ox=(e.ox||0)*decay,oy=(e.oy||0)*decay;
     let dx=e.x+ox,dy=e.y+oy;
     if(e.lx!==undefined&&!(M.freeze>0)&&!(M.countdown>0)){
-      const st=hyp(dx-e.lx,dy-e.ly),lim=(e===M.ball?950:430)*dt+2;
+      const st=hyp(dx-e.lx,dy-e.ly),lim=(e===M.ball?2600:700)*dt+2;
       if(st>lim&&st<170){const k=1-lim/st;ox+=(e.lx-dx)*k;oy+=(e.ly-dy)*k;dx=e.x+ox;dy=e.y+oy}
     }
     e.ox=Math.abs(ox)<0.05?0:ox;e.oy=Math.abs(oy)<0.05?0:oy;
@@ -3232,11 +3247,23 @@ function ballAhead(dt){
   // free ball: show where it is now (newest packet + travel since), not 80 ms ago
   const last=G.buf[G.buf.length-1],B=last.s.b,b=M.ball;
   if(B[4]>=0||B[8]!==M.local)G.ownBall=false;
-  if(B[4]>=0){const o=M.ents[B[4]];if(o){b.owner=o;dribblePos(o,dt)}return}
+  if(B[4]>=0){const o=M.ents[B[4]];if(o){b.owner=o;
+    // dribbled ball: place it where the server has it relative to the carrier (between the two snapshots we're showing),
+    // then add that to where we draw the carrier. The touches come from the server, so the ball never trails on a leash.
+    const C=G.cur;let ox,oy;
+    const off=(s)=>{const e=s.e[o.i],bb=s.b;return bb[4]===o.i&&e?[bb[0]-e[0],bb[1]-e[1]]:null};
+    if(o===M.ctrl[M.local]){const n=off(last.s);if(n){ox=n[0];oy=n[1]}}
+    else if(C){const A=off(C.a.s),Bo=C.b?off(C.b.s):null;if(A&&Bo){ox=A[0]+(Bo[0]-A[0])*C.f;oy=A[1]+(Bo[1]-A[1])*C.f}else if(Bo||A){[ox,oy]=Bo||A}}
+    if(ox===undefined){ox=o.fx*14;oy=o.fy*14}
+    const m=hyp(ox,oy);if(m>40){ox*=40/m;oy*=40/m}
+    const k=G.dbo&&G.dbo.i===o.i?Math.min(1,dt*(o===M.ctrl[M.local]?14:30)):1;
+    G.dbo=G.dbo&&G.dbo.i===o.i?{i:o.i,x:G.dbo.x+(ox-G.dbo.x)*k,y:G.dbo.y+(oy-G.dbo.y)*k}:{i:o.i,x:ox,y:oy};
+    b.x=clamp(o.x+G.dbo.x,3,W-3);b.y=clamp(o.y+G.dbo.y,3,H-3);b.vx=o.vx;b.vy=o.vy}return}
+  G.dbo=null;
   if(M.freeze>0||M.countdown>0)return;
   // after our own kick, run the ball ahead by the round trip so it stays on the path we already showed
   const extra=G.ownBall?Math.min(0.3,G.rtt/1000):0;
-  const t=Math.min(0.15,(performance.now()-last.at)/1000)+extra;
+  const t=clamp((performance.now()-last.at)/1000,0,0.15)+extra;
   const k=-Math.log(B[5]==='shot'?0.65:0.42),f=(1-Math.exp(-k*t))/k;
   b.owner=null;b.x=clamp(B[0]+B[2]*f,3,W-3);b.y=clamp(B[1]+B[3]*f,3,H-3);b.vx=B[2];b.vy=B[3];
 }
@@ -3263,7 +3290,7 @@ function kickAhead(){
   // the server has registered the kick (ball no longer at the kicker's feet), or it took too long: hand back
   const k=-Math.log(K.kind==='shot'?0.65:0.42),f=(1-Math.exp(-k*t))/k;
   const b=M.ball;
-  if(t>0.6||(B[4]!==K.from&&B[8]===M.local&&G.buf[G.buf.length-1].at>K.at)){
+  if(t>0.6||(B[4]!==K.from&&B[8]===M.local&&(G.buf[G.buf.length-1].rcv||G.buf[G.buf.length-1].at)>K.at)){
     // hand over to the server's ball without snapping back: glide from where we showed it
     G.ownBall=true;ballAhead();
     if(t<=0.6&&!b.owner){const px=clamp(K.x+K.vx*f,3,W-3),py=clamp(K.y+K.vy*f,3,H-3);b.ox=(b.ox||0)+(px-b.x);b.oy=(b.oy||0)+(py-b.y)}
@@ -3272,12 +3299,13 @@ function kickAhead(){
   b.x=clamp(K.x+K.vx*f,3,W-3);b.y=clamp(K.y+K.vy*f,3,H-3);
 }
 function guestStep(dt){
-  const now=performance.now(),rt=now-INTERP_MS;
+  const now=performance.now(),rt=now-(CLK.off!=null?CLK.delay:INTERP_MS);
   let a=null,b=null;
   for(let k=G.buf.length-1;k>=0;k--){if(G.buf[k].at<=rt){a=G.buf[k];b=G.buf[k+1]||null;break}}
   if(!a){a=G.buf[0];b=null}
   const newest=G.buf[G.buf.length-1].s;
   applySnap(b?b.s:a.s);
+  G.cur={a,b,f:b?clamp((rt-a.at)/Math.max(1,b.at-a.at),0,1):0};
   // smooth positions between the two snapshots around render time
   if(b){
     const f=clamp((rt-a.at)/Math.max(1,b.at-a.at),0,1);
@@ -4607,6 +4635,7 @@ function onlinePoll(){
 onlinePoll();setInterval(onlinePoll,30000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)onlinePoll()});
 // ---------- version history (newest first; add an entry with every change) ----------
 const VERSIONS=[
+ {v:'1.15',d:'Nov 6, 2026',items:['Smoother online play: the server timestamps every update, so players and the ball move evenly even when updates arrive in bursts','The playback buffer adapts to how steady your connection is','Fast shots no longer drag behind and then snap ahead on the other player\'s screen','Fixed the ball trailing far behind the dribbler in online matches: it now sits exactly where the server has it']},
  {v:'1.14',d:'Nov 6, 2026',items:['Players online counter in the header (on the hosted site)']},
  {v:'1.13',d:'Nov 6, 2026',items:['Removed mode and difficulty from the header','The computer\'s team now reads like "Real Madrid (AI) - Default" in the score bar']},
  {v:'1.12',d:'Nov 6, 2026',items:['Desktop: the formation buttons moved onto the pitch, between the two play pills, in one framed group','The pitch is a little bigger again now that the row under it is gone']},
