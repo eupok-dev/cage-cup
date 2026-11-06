@@ -108,6 +108,16 @@ body.dev .devlink[data-dev=on],body:not(.dev) .devlink[data-dev=off]{display:non
 .foot{display:flex;justify-content:center;gap:12px;padding:18px 0 24px}
 .sndbtn{background:var(--panel2);border:1px solid var(--line);color:var(--chalk);border-radius:999px;width:34px;height:30px;font-size:15px;line-height:1;cursor:pointer;padding:0}
 .bar .hsnd{margin-left:auto;margin-right:6px}
+.setbtn{background:var(--panel2);border:1px solid var(--line);color:var(--chalk);border-radius:999px;width:34px;height:30px;font-size:16px;line-height:1;cursor:pointer;padding:0}
+.bar .hset{margin-right:6px}
+#setSheet{position:fixed;inset:0;z-index:50;background:rgba(8,17,24,.8);display:flex;align-items:center;justify-content:center;padding:16px;touch-action:auto}
+#setSheet[hidden]{display:none}
+#setSheet .setin{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;width:min(420px,100%);display:flex;flex-direction:column;gap:12px;max-height:90dvh;overflow:auto}
+#setSheet h3{margin:0;font-family:var(--display);font-size:24px;text-transform:uppercase}
+#setSheet .vrow{display:grid;grid-template-columns:110px 1fr 42px;align-items:center;gap:10px;font-weight:600}
+#setSheet .vrow b{text-align:right;color:var(--muted);font-variant-numeric:tabular-nums}
+#setSheet input[type=range]{width:100%;accent-color:#ffb627;height:28px}
+#setSheet .row{display:flex;gap:8px;justify-content:flex-end;margin-top:4px}
 .g3dbtn{background:var(--panel2);border:1px solid var(--line);color:var(--muted);border-radius:999px;height:30px;padding:0 11px;font:900 13px var(--display);letter-spacing:.06em;cursor:pointer}
 .g3dbtn.on{background:#ffb627;color:#0d1820;border-color:#ffb627}
 .bar .hg3{margin-right:10px}
@@ -607,7 +617,7 @@ details.hint summary{cursor:pointer;font-family:var(--display);font-weight:800;f
 <div id="app">
   <header class="bar">
     <div class="brand">Cage <b>Cup</b></div>
-    <button class="sndbtn hsnd" aria-label="Sound on" title="Mute">🔊</button>
+    <button class="sndbtn hsnd" aria-label="Sound on" title="Mute">🔊</button><button class="setbtn hset" aria-label="Settings" title="Settings">⚙</button>
     <div class="chips" id="chips"></div>
   </header>
 
@@ -630,7 +640,7 @@ details.hint summary{cursor:pointer;font-family:var(--display);font-weight:800;f
         <section class="panel" id="menuPanel">
           <h1>Cage<b>Cup</b></h1>
           <p id="menuSub">Six-a-side cage football. Pick an opponent.</p>
-          <div class="menufoot"><button class="sndbtn msnd" aria-label="Sound on">🔊</button><button class="devlink" data-dev="on">Dev mode</button><button class="devlink" data-dev="off">Exit dev mode</button><span class="devtag">DEV MODE ON</span></div>
+          <div class="menufoot"><button class="sndbtn msnd" aria-label="Sound on">🔊</button><button class="setbtn msnd" aria-label="Settings">⚙</button><button class="devlink" data-dev="on">Dev mode</button><button class="devlink" data-dev="off">Exit dev mode</button><span class="devtag">DEV MODE ON</span></div>
           <div class="modes" id="modeRow"><button class="btn big" id="careerBtn">Campaign</button><button class="btn big ghost" id="vsAiBtn">Play vs AI</button><button class="btn big ghost" id="vsPersonBtn">Play vs Person</button><button class="btn big ghost" id="tutBtn">Tutorial</button></div>
           <div class="diffs" id="diffRow" hidden>
             <span class="label pickl">Your team</span>
@@ -656,6 +666,15 @@ details.hint summary{cursor:pointer;font-family:var(--display);font-weight:800;f
           <div class="row" id="resBtns"></div>
         </section>
       </div>
+      <div id="setSheet" hidden role="dialog" aria-label="Settings"><div class="setin">
+        <h3>Settings</h3>
+        <span class="label">Volume</span>
+        <div class="vrow"><span>Master</span><input type="range" min="0" max="100" step="1" data-vol="master" aria-label="Master volume"><b></b></div>
+        <div class="vrow"><span>Music</span><input type="range" min="0" max="100" step="1" data-vol="music" aria-label="Music volume"><b></b></div>
+        <div class="vrow"><span>Sound effects</span><input type="range" min="0" max="100" step="1" data-vol="sfx" aria-label="Sound effects volume"><b></b></div>
+        <div class="vrow"><span>Crowd</span><input type="range" min="0" max="100" step="1" data-vol="crowd" aria-label="Crowd and ambience volume"><b></b></div>
+        <div class="row"><button class="btn ghost small" id="setReset">Reset</button><button class="btn small" id="setClose">Done</button></div>
+      </div></div>
       <div id="cutBox" hidden role="dialog" aria-label="Story"><canvas id="cutFace" width="112" height="112"></canvas><div class="ctext"><b id="cutName"></b><p id="cutText"></p><span id="cutNext">Tap to continue ▸</span></div><button id="cutSkip">Skip scene ▸▸</button></div>
       <div id="mob" aria-label="Touch controls">
         <div class="mtop"><span id="mScore">0–0</span><span class="mclock" id="mClock">0'</span><button class="sndbtn" aria-label="Sound on">🔊</button><button id="mFull" aria-label="Full screen" hidden>⛶</button><button id="mMenu" aria-label="Menu">☰</button></div>
@@ -673,7 +692,7 @@ details.hint summary{cursor:pointer;font-family:var(--display);font-weight:800;f
           <div class="row" id="mForms"></div>
           <p class="mtip" id="mTip" hidden></p>
           <div id="mHowWrap" hidden><button class="btn ghost small mhowbtn" id="mHowBtn" aria-expanded="false">How to play full screen <span class="chev">▾</span></button><div id="mHow" hidden></div></div>
-          <div class="row"><button class="btn ghost small" id="mNames">Names: off</button><button class="btn small" id="mClose">Back to match</button></div>
+          <div class="row"><button class="btn ghost small" id="mNames">Names: off</button><button class="btn ghost small setbtn2" id="mSet">Sound settings</button><button class="btn small" id="mClose">Back to match</button></div>
           <div id="mEnd"></div>
           <pre class="errlog" id="errLog"></pre>
         </div></div>
@@ -1896,6 +1915,8 @@ function applyRemoteInput(T,m){
 
 
 
+
+
 // ---------- local input ----------
 const LI=newInput();
 let mode=null,stage='menu';
@@ -2145,6 +2166,8 @@ function g3Field(id){
   const tex=new T.CanvasTexture(groundImg(id));tex.anisotropy=4;
   const gp=new T.Mesh(new T.PlaneGeometry(FW,FH),new T.MeshBasicMaterial({map:tex}));gp.rotation.x=-Math.PI/2;gp.position.set(FX0+FW/2,0,FY0+FH/2);F.add(gp);
   const box=(w,h,d,x,y,z,col,basic)=>{const m=new T.Mesh(new T.BoxGeometry(w,h,d),g3m(col,basic));m.position.set(x,y,z);F.add(m);return m};
+  // story scenes away from the pitch: no cage or goals, just a few solid props on top of the painted floor
+  if(CUT_ROOMS.includes(id)){g3Room(id,box);G3.fans=null;G3.hemi.intensity=0.62;G3.sun.intensity=0.9;G3.R.setClearColor(0x0a131a);return}
   // low walls (gaps for the goals)
   const WH=12;
   box(W+12,WH,6,W/2,WH/2,-6,wallC);box(W+12,WH,6,W/2,WH/2,H+6,wallC);
@@ -2182,6 +2205,26 @@ function g3Field(id){
   }else G3.fans=null;
   G3.hemi.intensity=night?0.45:0.55;G3.sun.intensity=night?0.85:1.0;
   G3.R.setClearColor(night?0x05090d:0x0a131a);
+}
+// props for the story rooms, placed in the painted floor's original 800x500 layout (scaled up by FS)
+const CUT_ROOMS=['lot','locker','office','tunnel'];
+function g3Room(id,box){
+  const k=FS,B=(x,y,w,d,h,col,y0=0)=>box(w*k,h,d*k,(x+w/2)*k,y0+h/2,(y+d/2)*k,col);
+  const car=(x,y,col)=>{B(x-12,y-23,24,46,11,col,2);B(x-10,y-8,20,20,8,'#24313b',13);B(x-12.5,y-20,25,6,5,'#16191c',0);B(x-12.5,y+14,25,6,5,'#16191c',0)};
+  if(id==='lot'){car(150,45,'#c0392b');car(710,455,'#ecf0f1');
+    for(const x of[-60,W0+40])B(x,60,20,380,26,'#5b636a');B(-60,-70,W0+120,14,26,'#5b636a')}
+  else if(id==='locker'){
+    for(let x=180;x<W0-20;x+=52){B(x,-6,48,30,46,'#2c5f8a');B(x,H0-24,48,30,46,'#2c5f8a')}
+    B(250,180,500,28,9,'#8a5a32');B(250,290,500,28,9,'#8a5a32');
+    B(10,150,24,200,30,'#eef1e8');                   // tactics board
+    B(-40,-40,W0+80,30,60,'#56636b');B(-40,-40,30,H0+80,60,'#56636b');B(W0+10,-40,30,H0+80,60,'#56636b')}
+  else if(id==='office'){
+    B(280,90,240,70,15,'#5a3a22');B(362,108,56,8,22,'#1d2328',15);B(440,110,40,30,2,'#eef1e8',15);   // desk, monitor, letter
+    B(20,0,W0-40,46,46,'#4a3020');B(W0/2-8,10,16,16,18,'#e8c547',46);                       // shelf and the one trophy spot
+    B(-40,-40,W0+80,40,70,'#3a2a1c');B(-40,-40,30,H0+80,70,'#3a2a1c');B(W0+10,-40,30,H0+80,70,'#3a2a1c')}
+  else if(id==='tunnel'){
+    B(-90,96,W0+180,24,42,'#1b2025');B(-90,380,W0+180,24,42,'#1b2025');
+    for(let x=-60;x<W0+80;x+=120){box(28*k,3,6*k,x*k,43,108*k,'#f5f2d0',true);box(28*k,3,6*k,x*k,43,392*k,'#f5f2d0',true)}}
 }
 let netTexC=null;
 function g3NetTex(){if(netTexC)return netTexC;const c=document.createElement('canvas');c.width=c.height=64;const g=c.getContext('2d');g.strokeStyle='rgba(255,255,255,.55)';g.lineWidth=2;
@@ -2469,7 +2512,7 @@ function g3Frame(fdt,now,cam){
   }
   // ball
   const b=M.ball,Bl=G3.ball,lift=b.loft>0?b.loft*22:0,br=cam?1.5:1.3;
-  Bl.g.scale.setScalar(br);Bl.g.position.set(b.x,4.6*br+lift*1.6,b.y);Bl.sh.position.set(b.x,0.2,b.y);Bl.sh.scale.setScalar(0.5*br*(1-Math.min(0.4,lift/60)));
+  Bl.g.visible=Bl.sh.visible=true;Bl.g.scale.setScalar(br);Bl.g.position.set(b.x,4.6*br+lift*1.6,b.y);Bl.sh.position.set(b.x,0.2,b.y);Bl.sh.scale.setScalar(0.5*br*(1-Math.min(0.4,lift/60)));
   const bdt=fdt/(4.6*br);Bl.m.rotation.x+=b.vy*bdt;Bl.m.rotation.z-=b.vx*bdt;
   // crowd bounces when the play is near a goal or after a goal
   if(G3.fans&&G3.fanBase){const heat=M.bannerT>0?1:Math.max(0,1-Math.min(Math.abs(b.x),Math.abs(b.x-W))/180);if(heat>0.05||G3.fanUp){const o=new T.Object3D();G3.fanUp=heat>0.05;
@@ -3288,7 +3331,7 @@ const safe=(where,f)=>{try{f()}catch(err){noteErr(where,err)}};
 function loop(now){
   requestAnimationFrame(loop);
   const dt=Math.min(0.033,Math.max(0,(now-last)/1000));last=now;
-  if(stage==='cut'){safe('cutscene',()=>{if(G3.el)G3.el.style.display='none';cutTick(dt);cutDraw()});safe('sound',sndWatch);return}
+  if(stage==='cut'){safe('cutscene',()=>{cutTick(dt);cutDraw()});safe('sound',sndWatch);return}
   if(M)safe('game',()=>{
     if(M.guest){if(!M.over){guestTick(dt);sendInput()}}
     else if(!M.over){
@@ -4005,8 +4048,9 @@ function cutNext(){
   C.run=fx==='run';
   const a=C.A[who];
   $('#cutName').textContent=a?a.nm:'';$('#cutName').style.color=who==='you'?'#eef1e8':a&&a.team?(KITS[CLUBS[C.clubI].kit].label):(KITS[CR.kit].label);
+  C.faceT=0;
   const fc=$('#cutFace'),g=fc.getContext('2d');g.clearRect(0,0,fc.width,fc.height);
-  if(a){g.save();g.scale(3.4,3.4);drawChibi({...a,x:16.5,y:17,vx:0,vy:0,fx:0,fy:1},a.kit,0,0,g);g.restore()}
+  if(a&&!g3Active()){g.save();g.scale(3.4,3.4);drawChibi({...a,x:16.5,y:17,vx:0,vy:0,fx:0,fy:1},a.kit,0,0,g);g.restore()}
 }
 function cutEnd(){const C=CUT;CUT=null;$('#cutBox').hidden=true;if(C&&C.done)C.done()}
 function cutTick(dt){
@@ -4014,14 +4058,17 @@ function cutTick(dt){
   const ln=C.scene.lines[C.i];if(ln){const before=Math.floor(C.typed/3);C.typed=Math.min(ln[1].length,C.typed+dt*48);if(Math.floor(C.typed/3)>before&&C.typed<ln[1].length)SFX.blip();$('#cutText').textContent=ln[1].slice(0,Math.floor(C.typed));$('#cutNext').style.opacity=C.typed>=ln[1].length?1:0}
   const sp=C.A[C.speaker];
   for(const a of Object.values(C.A)){
-    const dx=a.tx-a.x,dy=a.ty-a.y,d=hyp(dx,dy),v=(C.run?190:120)*(a.mgr?0.8:1);
-    if(d>2){const s=Math.min(v,d*4);a.vx=dx/d*s;a.vy=dy/d*s;a.x+=a.vx*dt;a.y+=a.vy*dt;a.fx=dx/d;a.fy=dy/d}
+    const dx=a.tx-a.x,dy=a.ty-a.y,d=hyp(dx,dy),v=(C.run?175:72)*(a.mgr?0.85:1);
+    if(d>2){const s=Math.min(v,d*2.2);a.vx=dx/d*s;a.vy=dy/d*s;a.x+=a.vx*dt;a.y+=a.vy*dt;a.fx=dx/d;a.fy=dy/d}
     else{a.vx*=0.8;a.vy*=0.8;if(sp&&sp!==a){const fx=sp.x-a.x,fy=sp.y-a.y,m=hyp(fx,fy);if(m>1){a.fx+=(fx/m-a.fx)*0.1;a.fy+=(fy/m-a.fy)*0.1;const n=hyp(a.fx,a.fy)||1;a.fx/=n;a.fy/=n}}}
   }
   for(const p of C.parts){p.y+=p.vy*dt;p.x+=p.vx*dt;p.r+=dt*6}
 }
 function cutDraw(){
   const C=CUT;if(!C)return;keepSize();
+  if(G3.lost)g3Recover();
+  if(g3Active()){try{if(cutDraw3D(C))return}catch(err){noteErr('cut3d',err);G3.lost=true;G3.lostAt=performance.now()-3000}}
+  if(G3.el)G3.el.style.display='none';
   const s=Math.min(cv.width/860,cv.height/540),ox=(cv.width-860*s)/2,oy=(cv.height-540*s)/2;
   ctx.setTransform(1,0,0,1,0,0);ctx.fillStyle='#0a131a';ctx.fillRect(0,0,cv.width,cv.height);
   ctx.setTransform(s,0,0,s,ox+30*s,oy+20*s);ctx.lineJoin='round';
@@ -4045,19 +4092,87 @@ function cutDraw(){
   const nm=set==='lot'?CR.club+' car park':(GROUNDS[set]||{}).n;if(nm){ctx.font=`800 ${Math.round(12*s*1.2)}px Barlow, sans-serif`;ctx.textAlign='left';ctx.textBaseline='top';ctx.fillStyle='rgba(255,255,255,.75)';ctx.fillText(nm.toUpperCase(),ox+14*s,oy+10*s)}
 }
 
+// ---- 3D story scenes: the same low-poly people and grounds as the matches ----
+// Scenes are written in the original 800x500 pitch coordinates; the 3D world is FS times bigger.
+function cutEnt(a){
+  if(!a.e)a.e={p:a.p,gk:a.gk,team:a.team,skin:a.skin,hair:a.hair,x:0,y:0,vx:0,vy:0,fx:1,fy:0,slide:0,dive:0,stun:0,skill:0,skillWU:0,lunge:0,recover:0,burst:0,tq:null,touch:null,sdx:0,sdy:1,ddx:0,ddy:1};
+  const e=a.e;e.x=a.x*FS;e.y=a.y*FS;e.vx=a.vx*FS;e.vy=a.vy*FS;e.fx=a.fx;e.fy=a.fy;return e}
+function cutDraw3D(C){
+  const T=THREE,R=G3.R,el=G3.el,w=cv.width,h=cv.height,S=G3.S,Cc=G3.C;
+  if(el.style.display!=='block')el.style.display='block';
+  if(el.width!==w||el.height!==h)R.setSize(w,h,false);
+  {const st=el.style,l=cv.offsetLeft+'px',t=cv.offsetTop+'px',cw=cv.clientWidth+'px',ch=cv.clientHeight+'px';
+   if(st.left!==l)st.left=l;if(st.top!==t)st.top=t;if(st.width!==cw)st.width=cw;if(st.height!==ch)st.height=ch}
+  const gl=R.getContext();if(!gl||gl.isContextLost()){G3.lost=true;G3.lostAt=G3.lostAt||performance.now();return false}
+  const set=C.scene.set;if(G3.field!==set)g3Field(set);
+  const now=performance.now(),fdt=Math.min(0.05,(now-(cutDraw.t||now))/1000);cutDraw.t=now;
+  // a stand-in match for the pose code: no ball in play; everyone's eyes go to whoever is talking
+  if(!C.Mf)C.Mf={ball:{x:0,y:0,owner:null,vx:0,vy:0},t:0,ctrl:[null,null],local:0,demo:true,ents:[]};
+  const Mf=C.Mf,sp=C.A[C.speaker];Mf.t=now/1000;if(sp){Mf.ball.x=sp.x*FS;Mf.ball.y=sp.y*FS}
+  if(G3.m!==Mf){for(const P of G3.pl.values()){G3.scene.remove(P.g);try{P.ring.material.dispose()}catch(e){}}G3.pl.clear();G3.m=Mf}
+  G3.ball.g.visible=false;G3.ball.sh.visible=false;
+  const sc=MOB?2.45:2.3,M0=M;M=Mf;
+  try{
+    for(const a of Object.values(C.A)){
+      let P=G3.pl.get(a);if(!P){P=g3Player();G3.pl.set(a,P);P.ring.visible=false;
+        if(a.mgr){const tie=new T.Mesh(new T.BoxGeometry(0.9,5,0.5),g3m('#e5484d'));tie.position.set(0,6.4,2.15);P.spine.add(tie)}}
+      const e=cutEnt(a);P.g.visible=!a.hide;if(a.hide)continue;
+      g3Paint(P,e,a.kit);
+      if(a.mgr&&!P.suit){P.suit=1;const su=g3m(a.kit.main),M_=P.m;for(const k of['shortL','thigh','shin','upper','fore','sleeve'])for(const m of M_[k])m.material=su;M_.pelvis.material=su}
+      g3Pose(P,e,fdt,now);
+      P.g.position.set(e.x,a.key===C.speaker&&hyp(a.vx,a.vy)<5?Math.abs(Math.sin(now/170))*1.6:0,e.y);P.g.scale.setScalar(sc);P.sc=sc;
+    }
+  }finally{M=M0}
+  // camera: the whole scene in view
+  const z=Math.min(w/(W-60),h/((H-10)*S+40)),tx=W/2,ty=H/2-6/S,cm=G3.cam,hw=w/(2*z),hh=h/(2*z);
+  G3.view={z,tx,ty};
+  // speaker portrait for the dialogue box: a close camera in front of his face, clipped so nothing else gets in the shot
+  C.faceT=(C.faceT||0)-fdt;
+  if(sp&&!sp.hide&&C.faceT<=0){C.faceT=0.12;const P=G3.pl.get(sp);if(P){
+    const v=new T.Vector3();P.head.getWorldPosition(v);const yw=P.yaw+(P.look||0)*0.5,fx=Math.sin(yw)+0.35*Math.cos(yw),fz=Math.cos(yw)-0.35*Math.sin(yw),D=300,hs=6.2*sc;
+    const asp=w/h;cm.left=-hs*asp;cm.right=hs*asp;cm.top=hs;cm.bottom=-hs;cm.near=D-22*sc;cm.far=D+22*sc;cm.updateProjectionMatrix();
+    v.y-=1.6*sc;cm.position.set(v.x+fx*D,v.y+0.12*D,v.z+fz*D);cm.lookAt(v);
+    R.setClearColor(0x1c3040);R.render(G3.scene,cm);
+    const fc=$('#cutFace'),g=fc.getContext('2d');g.clearRect(0,0,fc.width,fc.height);g.drawImage(el,(w-h)/2,0,h,h,0,0,fc.width,fc.height);
+    R.setClearColor(['night','legends','court','royal','iron'].includes(set)?0x05090d:0x0a131a)}}
+  cm.left=-hw;cm.right=hw;cm.top=hh;cm.bottom=-hh;cm.near=1;cm.far=5000;cm.updateProjectionMatrix();
+  cm.position.set(tx,S*2000,ty+Cc*2000);cm.lookAt(tx,0,ty);
+  R.render(G3.scene,cm);
+  // 2D overlay in screen space: name and a talking bubble over the speaker, confetti, the place name
+  ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,w,h);
+  const scr=(x,y,ht)=>[w/2+(x-tx)*z,h/2+((y-ty)*S-ht*Cc)*z];
+  if(sp&&!sp.hide){const [bx,by]=scr(sp.x*FS,sp.y*FS,44*sc),[lx,ly]=scr(sp.x*FS,sp.y*FS,0),f=Math.max(11,Math.round(13*z*1.25));
+    ctx.font=`800 ${f}px Barlow, sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineWidth=4;ctx.strokeStyle='rgba(13,24,32,.9)';ctx.strokeText(sp.nm,lx,ly+f*1.4);ctx.fillStyle='#fff';ctx.fillText(sp.nm,lx,ly+f*1.4);
+    const dots='•'.repeat(1+Math.floor(now/300)%3),bw=f*2.2,bh=f*1.25;ctx.fillStyle='#fff';ctx.beginPath();ctx.roundRect(bx-bw/2,by-bh,bw,bh,bh/2);ctx.fill();
+    ctx.beginPath();ctx.moveTo(bx-4,by-1);ctx.lineTo(bx+4,by-1);ctx.lineTo(bx,by+5);ctx.fill();ctx.fillStyle='#0d1820';ctx.fillText(dots,bx,by-bh/2)}
+  for(const p of C.parts){const [px,py]=scr(p.x*FS,p.y*FS,0);ctx.save();ctx.translate(px,py);ctx.rotate(p.r);ctx.fillStyle=p.c;const q=Math.max(1,z*1.3);ctx.fillRect(-3*q,-1.5*q,6*q,3*q);ctx.restore()}
+  const nm=set==='lot'?CR.club+' car park':(GROUNDS[set]||{}).n;
+  if(nm){const f=Math.round(Math.max(12,15*z*1.1));ctx.font=`800 ${f}px Barlow, sans-serif`;ctx.textAlign='left';ctx.textBaseline='top';ctx.lineWidth=4;ctx.strokeStyle='rgba(13,24,32,.7)';ctx.strokeText(nm.toUpperCase(),14,12);ctx.fillStyle='rgba(255,255,255,.85)';ctx.fillText(nm.toUpperCase(),14,12)}
+  return true;
+}
 $('#cutBox').addEventListener('click',e=>{if(e.target.closest('#cutSkip'))return;cutNext()});
 $('#cutSkip').addEventListener('click',e=>{e.stopPropagation();cutEnd()});
 cv.addEventListener('click',()=>{if(stage==='cut')cutNext()});
 // =================== SOUND (all generated in the browser, no audio files) ===================
-const SND={ac:null,master:null,on:true,amb:null,ambKey:'',noise:null};
+const SND={ac:null,master:null,on:true,amb:null,ambKey:'',noise:null,bus:{}};
 try{SND.on=localStorage.getItem('cagecup.sound')!=='off'}catch(e){}
+// volume levels 0-1 per channel (Settings). Sliders map to gain on a squared curve so the middle of the slider sounds like the middle.
+const VOL_DEF={master:1,music:0.7,sfx:1,crowd:1},VOL={...VOL_DEF};
+try{const v=JSON.parse(localStorage.getItem('cagecup.vol')||'{}');for(const k in VOL_DEF)if(typeof v[k]==='number')VOL[k]=clamp(v[k],0,1)}catch(e){}
+const volG=k=>VOL[k]*VOL[k];
+function volApply(){if(!SND.ac)return;const t=SND.ac.currentTime;
+  if(SND.master)SND.master.gain.setTargetAtTime(SND.on?0.7*volG('master'):0,t,0.05);
+  for(const k of['music','sfx','crowd'])if(SND.bus[k])SND.bus[k].gain.setTargetAtTime(volG(k),t,0.05);
+  if(BGM.el&&!BGM.g)BGM.el.volume=clamp(0.3*volG('music')*volG('master'),0,1)}
+function volSet(k,v){VOL[k]=clamp(v,0,1);try{localStorage.setItem('cagecup.vol',JSON.stringify(VOL))}catch(e){}volApply()}
 function sndInit(){
   // iPhone: play through the silent switch where Safari allows it
   try{if(navigator.audioSession&&navigator.audioSession.type!=='playback')navigator.audioSession.type='playback'}catch(e){}
   if(SND.ac){if(SND.ac.state!=='running')SND.ac.resume().catch(()=>{});musicUpdate();return}
   const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;
-  const ac=SND.ac=new AC();SND.master=ac.createGain();SND.master.gain.value=SND.on?0.7:0;
+  const ac=SND.ac=new AC();SND.master=ac.createGain();SND.master.gain.value=SND.on?0.7*volG('master'):0;
   const comp=ac.createDynamicsCompressor();SND.master.connect(comp);comp.connect(ac.destination);
+  for(const k of['music','sfx','crowd']){const g=SND.bus[k]=ac.createGain();g.gain.value=volG(k);g.connect(SND.master)}
   const len=ac.sampleRate*2,buf=ac.createBuffer(1,len,ac.sampleRate),d=buf.getChannelData(0);for(let i=0;i<len;i++)d[i]=Math.random()*2-1;SND.noise=buf;
   // a silent blip inside the first tap unlocks audio on iPhone
   try{const s=ac.createBufferSource();s.buffer=ac.createBuffer(1,1,22050);s.connect(ac.destination);s.start(0)}catch(e){}
@@ -4070,27 +4185,27 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
 const MUSIC_STAGES=['menu','career','lobby','result'],BGM={el:null,g:null,t:0};
 function musicEl(){
   if(BGM.el)return BGM.el;const a=new Audio('menu-music.mp3');a.loop=true;a.preload='auto';a.setAttribute('playsinline','');BGM.el=a;
-  try{const src=SND.ac.createMediaElementSource(a);BGM.g=SND.ac.createGain();BGM.g.gain.value=0.0001;src.connect(BGM.g);BGM.g.connect(SND.master)}catch(e){a.volume=0.35}
+  try{const src=SND.ac.createMediaElementSource(a);BGM.g=SND.ac.createGain();BGM.g.gain.value=0.0001;src.connect(BGM.g);BGM.g.connect(SND.bus.music)}catch(e){a.volume=clamp(0.3*volG('music')*volG('master'),0,1)}
   return a;
 }
 function musicUpdate(){
   if(!SND.ac)return;const a=musicEl(),want=SND.on&&MUSIC_STAGES.includes(stage)&&document.visibilityState!=='hidden',t=SND.ac.currentTime;
   clearTimeout(BGM.t);
-  if(want){if(a.paused)a.play().catch(()=>{});if(BGM.g)BGM.g.gain.setTargetAtTime(0.3,t,0.5)}
+  if(want){if(a.paused)a.play().catch(()=>{});if(BGM.g)BGM.g.gain.setTargetAtTime(0.22,t,0.5)}
   else{if(BGM.g)BGM.g.gain.setTargetAtTime(0.0001,t,0.25);BGM.t=setTimeout(()=>{if(!(SND.on&&MUSIC_STAGES.includes(stage)))a.pause()},1000)}
 }
-function sndSet(on){SND.on=on;setTimeout(()=>{try{musicUpdate()}catch(e){}},0);try{localStorage.setItem('cagecup.sound',on?'on':'off')}catch(e){}if(SND.master)SND.master.gain.setTargetAtTime(on?0.7:0,SND.ac.currentTime,0.05);
+function sndSet(on){SND.on=on;setTimeout(()=>{try{musicUpdate()}catch(e){}},0);try{localStorage.setItem('cagecup.sound',on?'on':'off')}catch(e){}if(SND.master)SND.master.gain.setTargetAtTime(on?0.7*volG('master'):0,SND.ac.currentTime,0.05);
   document.querySelectorAll('.sndbtn').forEach(b=>{b.textContent=on?'🔊':'🔇';b.setAttribute('aria-label',on?'Sound on':'Sound off');b.title=on?'Mute':'Unmute'})}
 const live_=()=>SND.ac&&SND.on&&SND.ac.state==='running';
 // building blocks
 function tone(f0,f1,dur,type='sine',vol=0.3,at=0){if(!live_())return;const ac=SND.ac,t=ac.currentTime+at,o=ac.createOscillator(),g=ac.createGain();
   o.type=type;o.frequency.setValueAtTime(f0,t);if(f1!==f0)o.frequency.exponentialRampToValueAtTime(Math.max(20,f1),t+dur);
   g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+0.008);g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
-  o.connect(g);g.connect(SND.master);o.start(t);o.stop(t+dur+0.02)}
-function noise(dur,type,f0,f1,vol=0.3,q=1,at=0,attack=0.005){if(!live_())return;const ac=SND.ac,t=ac.currentTime+at,s=ac.createBufferSource(),f=ac.createBiquadFilter(),g=ac.createGain();
+  o.connect(g);g.connect(SND.bus.sfx);o.start(t);o.stop(t+dur+0.02)}
+function noise(dur,type,f0,f1,vol=0.3,q=1,at=0,attack=0.005,bus=SND.bus.sfx){if(!live_())return;const ac=SND.ac,t=ac.currentTime+at,s=ac.createBufferSource(),f=ac.createBiquadFilter(),g=ac.createGain();
   s.buffer=SND.noise;s.loop=true;f.type=type;f.Q.value=q;f.frequency.setValueAtTime(f0,t);if(f1!==f0)f.frequency.exponentialRampToValueAtTime(Math.max(30,f1),t+dur);
   g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+attack);g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
-  s.connect(f);f.connect(g);g.connect(SND.master);s.start(t,Math.random()*1.5);s.stop(t+dur+0.05)}
+  s.connect(f);f.connect(g);g.connect(bus);s.start(t,Math.random()*1.5);s.stop(t+dur+0.05)}
 const SFX={
   pass(){tone(170,70,0.09,'sine',0.35);noise(0.04,'lowpass',1800,800,0.12)},
   through(){tone(190,80,0.1,'sine',0.35);noise(0.18,'bandpass',900,2200,0.06,2)},
@@ -4098,7 +4213,7 @@ const SFX={
   power(){tone(120,38,0.18,'sine',0.7);noise(0.07,'lowpass',3000,900,0.3);noise(0.45,'bandpass',500,3000,0.16,1.2,0.02,0.04);tone(880,1760,0.12,'triangle',0.06,0.03)},
   whistle(n=1,long=false){for(let k=0;k<n;k++){const at=k*0.32,d=long&&k===n-1?0.8:0.22;if(!live_())return;const ac=SND.ac,t=ac.currentTime+at;
     for(const f of[2650,2720]){const o=ac.createOscillator(),lfo=ac.createOscillator(),lg=ac.createGain(),g=ac.createGain();o.type='sine';o.frequency.value=f;lfo.frequency.value=34;lg.gain.value=60;lfo.connect(lg);lg.connect(o.frequency);
-      g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(0.09,t+0.02);g.gain.setValueAtTime(0.09,t+d-0.04);g.gain.exponentialRampToValueAtTime(0.0001,t+d);o.connect(g);g.connect(SND.master);o.start(t);lfo.start(t);o.stop(t+d+0.02);lfo.stop(t+d+0.02)}}},
+      g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(0.09,t+0.02);g.gain.setValueAtTime(0.09,t+d-0.04);g.gain.exponentialRampToValueAtTime(0.0001,t+d);o.connect(g);g.connect(SND.bus.sfx);o.start(t);lfo.start(t);o.stop(t+d+0.02);lfo.stop(t+d+0.02)}}},
   goal(mine){noise(0.25,'highpass',3000,5000,0.12);tone(110,50,0.2,'sine',0.4);
     const k=M&&M.field||'classic',size=(AMB[k]||AMB.classic)[0];
     if(BIG(k))cheer(size,mine);claps(mine?(BIG(k)?40:14):(BIG(k)?14:5),mine?1.6:1,BIG(k)?0.05:0.07);
@@ -4128,13 +4243,13 @@ const AMB={classic:[0.25,0],park:[0,0.15],carpark:[0,0.12],docks:[0,0.35],iron:[
 const BIG=k=>(AMB[k]||AMB.classic)[0]>0.2;
 // crowd murmur: a few narrow bands of noise, each slowly swelling and fading, low-passed so it reads as voices not hiss
 function murmur(level){
-  const ac=SND.ac,out=ac.createGain(),lp=ac.createBiquadFilter();lp.type='lowpass';lp.frequency.value=900;lp.Q.value=0.5;out.gain.value=0.0001;lp.connect(out);out.connect(SND.master);
+  const ac=SND.ac,out=ac.createGain(),lp=ac.createBiquadFilter();lp.type='lowpass';lp.frequency.value=900;lp.Q.value=0.5;out.gain.value=0.0001;lp.connect(out);out.connect(SND.bus.crowd);
   const parts=[];for(const f of[210,320,450,620,820]){const s=ac.createBufferSource(),bp=ac.createBiquadFilter(),g=ac.createGain(),lfo=ac.createOscillator(),lg=ac.createGain();
     s.buffer=SND.noise;s.loop=true;bp.type='bandpass';bp.frequency.value=f*(0.9+Math.random()*0.2);bp.Q.value=5;g.gain.value=0.5;lfo.frequency.value=0.15+Math.random()*0.6;lg.gain.value=0.45;
     lfo.connect(lg);lg.connect(g.gain);s.connect(bp);bp.connect(g);g.connect(lp);s.start(0,Math.random()*1.5);lfo.start();parts.push(s,lfo)}
   out.gain.setTargetAtTime(level,ac.currentTime,1.2);return{out,parts}
 }
-function windNoise(level){const ac=SND.ac,s=ac.createBufferSource(),f=ac.createBiquadFilter(),g=ac.createGain();s.buffer=SND.noise;s.loop=true;f.type='lowpass';f.frequency.value=320;f.Q.value=0.7;g.gain.value=0.0001;g.gain.setTargetAtTime(level,ac.currentTime,1.2);s.connect(f);f.connect(g);g.connect(SND.master);s.start();return{s,f,g}}
+function windNoise(level){const ac=SND.ac,s=ac.createBufferSource(),f=ac.createBiquadFilter(),g=ac.createGain();s.buffer=SND.noise;s.loop=true;f.type='lowpass';f.frequency.value=320;f.Q.value=0.7;g.gain.value=0.0001;g.gain.setTargetAtTime(level,ac.currentTime,1.2);s.connect(f);f.connect(g);g.connect(SND.bus.crowd);s.start();return{s,f,g}}
 function ambience(key,heat=0){
   if(!live_()){if(SND.amb&&!SND.on)ambStop();return}
   const ac=SND.ac;
@@ -4148,7 +4263,7 @@ function ambStop(){const A=SND.amb;if(A&&SND.ac){const t=SND.ac.currentTime;
   if(A.crowd){A.crowd.out.gain.setTargetAtTime(0.0001,t,0.3);A.crowd.parts.forEach(n=>n.stop(t+1.2))}
   if(A.wind){A.wind.g.gain.setTargetAtTime(0.0001,t,0.3);A.wind.s.stop(t+1.2)}}SND.amb=null;SND.ambKey=''}
 // claps: short bursts of filtered noise scattered over a second or two
-function claps(n,spread,vol){for(let k=0;k<n;k++){const at=Math.random()*spread;noise(0.05,'bandpass',1200+Math.random()*900,1100,vol*(0.5+Math.random()*0.5),1.2,at,0.002)}}
+function claps(n,spread,vol){for(let k=0;k<n;k++){const at=Math.random()*spread;noise(0.05,'bandpass',1200+Math.random()*900,1100,vol*(0.5+Math.random()*0.5),1.2,at,0.002,SND.bus.crowd)}}
 function cheer(size,mine){
   if(!live_())return;const ac=SND.ac,t=ac.currentTime,m=murmur(0.0001);
   m.out.gain.cancelScheduledValues(t);m.out.gain.setValueAtTime(0.0001,t);m.out.gain.exponentialRampToValueAtTime((mine?0.28:0.12)*size,t+0.25);m.out.gain.exponentialRampToValueAtTime(0.0001,t+2.8);
@@ -4178,6 +4293,20 @@ function sndWatch(){
 document.addEventListener('click',e=>{if(e.target.closest('.btn,.ctabs button,.tbr,.tnode,.mform,.devlink,.rtabs button'))SFX.click()},true);
 
 document.querySelectorAll('.sndbtn').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();sndInit();sndSet(!SND.on)}));sndSet(SND.on);
+// ---------- settings: volume per channel ----------
+function setSync(){document.querySelectorAll('#setSheet input[data-vol]').forEach(i=>{const k=i.dataset.vol;i.value=Math.round(VOL[k]*100);i.nextElementSibling.textContent=i.value+'%'})}
+function setOpen(on){const sh=$('#setSheet');sh.hidden=!on;if(on){setSync();sndInit()}}
+document.querySelectorAll('.setbtn,#mSet').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();setOpen(true)}));
+document.querySelectorAll('#setSheet input[data-vol]').forEach(i=>{
+  i.addEventListener('input',()=>{volSet(i.dataset.vol,i.value/100);i.nextElementSibling.textContent=i.value+'%';if(!SND.on&&i.value>0)sndSet(true)});
+  // a short sample so you can hear the level you picked
+  i.addEventListener('change',()=>{const k=i.dataset.vol;if(k==='sfx'||k==='master')SFX.pass();else if(k==='crowd')claps(10,0.6,0.07)});
+  i.addEventListener('keydown',e=>e.stopPropagation())});
+$('#setReset').addEventListener('click',()=>{for(const k in VOL_DEF)VOL[k]=VOL_DEF[k];volSet('master',VOL.master);setSync()});
+$('#setClose').addEventListener('click',()=>setOpen(false));
+$('#setSheet').addEventListener('click',e=>{if(e.target.id==='setSheet')setOpen(false)});
+['pointerdown','touchstart','touchend','mousedown'].forEach(t=>$('#setSheet').addEventListener(t,e=>e.stopPropagation()));
+window.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('#setSheet').hidden){setOpen(false);e.stopPropagation()}},true);
 // ---------- campaign welcome: create your manager and club, then offer the tutorial ----------
 const KIT_COLS=[['#ffb627','Gold'],['#e5484d','Red'],['#2e6bd9','Blue'],['#2f9e44','Green'],['#7048e8','Purple'],['#f76707','Orange'],['#14a39a','Teal'],['#e64980','Pink'],['#1d2328','Black'],['#f2f2f2','White']];
 const TRIMS=[['','None'],['#ffffff','White'],['#1d2328','Black'],['#e8c547','Gold'],['#1f4fa3','Navy'],['#e5484d','Red']];
