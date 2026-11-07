@@ -75,7 +75,7 @@ function page(req) {
     '<meta name="theme-color" content="#121318"><meta name="mobile-web-app-capable" content="yes">' +
     '<meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">' +
     '<meta name="apple-mobile-web-app-title" content="Boot Rivals"><link rel="manifest" href="/manifest.webmanifest">' +
-    '<link rel="apple-touch-icon" href="/icon-180.png"><link rel="icon" type="image/png" sizes="32x32" href="/icon-32.png"><link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">' +
+    '<link rel="apple-touch-icon" href="/icon-180.png?v=2"><link rel="icon" type="image/png" sizes="32x32" href="/icon-32.png?v=2"><link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png?v=2">' +
     '</head><body>' + body + '</body></html>';
 }
 let engineCache = null;
@@ -107,7 +107,7 @@ function baseUrl(req) {
 const MANIFEST = JSON.stringify({
   name: 'Boot Rivals', short_name: 'Boot Rivals', start_url: '/', scope: '/', display: 'fullscreen', orientation: 'landscape',
   background_color: '#121318', theme_color: '#121318',
-  icons: [{ src: '/icon-192.png', sizes: '192x192', type: 'image/png' }, { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' }]
+  icons: [{ src: '/icon-192.png?v=2', sizes: '192x192', type: 'image/png' }, { src: '/icon-512.png?v=2', sizes: '512x512', type: 'image/png', purpose: 'any maskable' }]
 });
 // players online: every open game checks in about every 30s with a random id; count the ids seen in the last 70s
 const seen = new Map();
@@ -152,7 +152,10 @@ const server = http.createServer((req, res) => {
     return;
   }
   if (req.method === 'GET' && url === '/manifest.webmanifest') { res.writeHead(200, { 'Content-Type': 'application/manifest+json' }); res.end(MANIFEST); return; }
-  const ic = req.method === 'GET' && /^\/icon-(32|180|192|512)\.png$/.exec(url);
+  // default paths some browsers ask for without reading the page
+  const alias = { '/apple-touch-icon.png': '180', '/apple-touch-icon-precomposed.png': '180', '/favicon.ico': '32' }[url.split('?')[0]];
+  if (req.method === 'GET' && alias) { try { const buf = fs.readFileSync(path.join(__dirname, `icon-${alias}.png`)); res.writeHead(200, { 'Content-Type': 'image/png', 'Cache-Control': 'max-age=86400' }); res.end(buf); } catch (e) { res.writeHead(404); res.end(); } return; }
+  const ic = req.method === 'GET' && /^\/icon-(32|180|192|512)\.png(\?.*)?$/.exec(url);
   if (ic) {
     try { const buf = fs.readFileSync(path.join(__dirname, `icon-${ic[1]}.png`)); res.writeHead(200, { 'Content-Type': 'image/png', 'Cache-Control': 'max-age=86400' }); res.end(buf); }
     catch (e) { res.writeHead(404); res.end(); }
