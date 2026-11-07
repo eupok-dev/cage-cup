@@ -957,6 +957,54 @@ body.mob.incareer header.bar{z-index:1}
   body.mob .packs3{grid-template-columns:repeat(3,minmax(0,150px));gap:16px}
   body.mob .pk3-foil b{font-size:22px}
 }
+
+/* ---------- phone menus: full-screen live match behind a game-style menu ---------- */
+body.mob.mmenu .pitchbox{position:fixed!important;inset:0!important;top:0!important;width:100vw!important;height:100dvh!important;--pw:100vw;z-index:0;margin:0;border-radius:0;background:#070709;display:block}
+body.mob.mmenu #pitch{width:100vw!important;height:100dvh!important;aspect-ratio:auto!important;max-width:none!important;border-radius:0!important;display:block}
+body.mob.mmenu #overlay:not(.wide){position:fixed;inset:0;z-index:3;display:block;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:0;background:none;border-radius:0}
+body.mob.mmenu #overlay>.panel{max-width:none;width:100%;box-sizing:border-box}
+body.mob.mmenu #menuPanel{display:block;padding:0;gap:0}
+body.mob.mmenu #menuPanel>*:not(.mscreen):not(.mfooter){display:none}
+.mscreen{min-height:100svh;box-sizing:border-box;display:flex;flex-direction:column;justify-content:space-between;gap:28px;
+  padding:calc(var(--hdrH,84px) + 30px) max(22px,env(safe-area-inset-right)) max(30px,calc(env(safe-area-inset-bottom) + 18px)) max(22px,env(safe-area-inset-left));
+  background:linear-gradient(180deg,rgba(10,11,14,.88) 0%,rgba(10,11,14,.66) 30%,rgba(10,11,14,.2) 50%,rgba(10,11,14,.35) 64%,rgba(10,11,14,.92) 90%)}
+.mhero{display:flex;flex-direction:column;gap:12px}
+body.mob.mmenu .mhero h1{margin:0;font-size:clamp(66px,21vw,104px);line-height:.86;letter-spacing:-.01em;text-shadow:0 4px 24px rgba(0,0,0,.55)}
+body.mob.mmenu .mhero h1 b{display:block;margin-left:0}
+body.mob.mmenu #menuSub{margin:0;font-size:16px;color:#d5d8de;text-shadow:0 1px 8px rgba(0,0,0,.7);max-width:30ch}
+.mbtns{display:flex;flex-direction:column;gap:12px}
+body.mob.mmenu .mbtns .modes{flex-direction:column;align-items:stretch;gap:10px;width:100%}
+body.mob.mmenu .mbtns .modes[hidden],body.mob.mmenu .mbtns .diffs[hidden]{display:none}
+body.mob.mmenu .mbtns .btn.big{width:100%;justify-content:center;text-align:center;font-size:21px;padding:15px 18px;border-radius:14px}
+body.mob.mmenu .mbtns .btn.big.ghost{background:rgba(18,19,24,.72);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);border-color:rgba(255,255,255,.18)}
+body.mob.mmenu .mbtns .btn.big:not(.ghost){font-size:26px;padding:18px;box-shadow:0 8px 28px color-mix(in srgb,var(--accent) 35%,transparent)}
+body.mob.mmenu .mbtns .joinrow{flex-direction:column}
+body.mob.mmenu .mbtns .diffs{max-width:none;background:rgba(14,15,19,.82);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border:1px solid var(--line);border-radius:16px;padding:12px}
+.mfooter{background:#0c0d10;border-top:1px solid var(--line);padding:30px max(22px,env(safe-area-inset-right)) max(34px,calc(env(safe-area-inset-bottom) + 24px)) max(22px,env(safe-area-inset-left));display:flex;flex-direction:column;gap:16px}
+.mfooter .menutip{font-size:13px;line-height:1.5;color:var(--muted);margin:0;padding-bottom:16px;border-bottom:1px solid var(--line)}
+.mfooter .menufoot{order:0;gap:16px}
+.mfooter .foot.infoot{padding:0;gap:8px}
+body.mob.mmenu #lobbyPanel,body.mob.mmenu #resultPanel{min-height:100svh;padding:calc(var(--hdrH,84px) + 24px) max(22px,env(safe-area-inset-right)) 28px max(22px,env(safe-area-inset-left));justify-content:center;background:linear-gradient(180deg,rgba(10,11,14,.85),rgba(10,11,14,.6) 40%,rgba(10,11,14,.9))}
+@media (orientation:landscape){
+  .mscreen{min-height:100svh;gap:16px;padding-top:calc(var(--hdrH,80px) + 22px);padding-bottom:max(22px,calc(env(safe-area-inset-bottom) + 14px));
+    background:linear-gradient(90deg,rgba(10,11,14,.9) 0%,rgba(10,11,14,.62) 42%,rgba(10,11,14,.12) 75%),linear-gradient(180deg,rgba(10,11,14,.55),transparent 35%)}
+  body.mob.mmenu .mhero h1{font-size:clamp(48px,7.5vw,72px)}
+  body.mob.mmenu .mhero h1 b{display:inline;margin-left:.18em}
+  body.mob.mmenu #menuSub{font-size:15px}
+  body.mob.mmenu .mbtns .modes:not(.joinrow){flex-direction:row;flex-wrap:wrap;align-items:center;width:auto}
+  body.mob.mmenu .mbtns .modes:not(.joinrow) .btn.big{width:auto;font-size:18px;padding:12px 22px}
+  body.mob.mmenu .mbtns .modes:not(.joinrow) .btn.big:not(.ghost){font-size:22px;padding:13px 30px}
+  body.mob.mmenu .mbtns .joinrow{max-width:460px}
+  body.mob.mmenu .mbtns .diffs{max-width:720px}
+}
+@media (max-width:360px){.bar .brand{font-size:21px;white-space:nowrap}}
+body.mob.mmenu #lobbyPanel{align-items:center;text-align:center}
+body.mob.mmenu #lobbyPanel>h2{text-shadow:0 2px 14px rgba(0,0,0,.6)}
+@media (orientation:landscape){
+  body.mob.mmenu #lobbyPanel,body.mob.mmenu #resultPanel{padding-top:calc(var(--hdrH,80px) + 8px);padding-bottom:14px;gap:8px}
+  body.mob.mmenu #lobbyPanel>h2{display:none}
+  body.mob.mmenu .qsearch{gap:8px;padding:0}body.mob.mmenu .qsearch .spin{width:40px;height:40px}body.mob.mmenu .qsearch h3{font-size:24px}
+}
 </style><style>
 body{margin:0}
 .panel{display:flex;flex-direction:column;gap:14px;align-items:flex-start}
@@ -2420,6 +2468,10 @@ function applyRemoteInput(T,m){
 
 
 
+
+
+
+
 // ---------- local input ----------
 const LI=newInput();
 let mode=null,stage='menu';
@@ -2579,10 +2631,12 @@ function drawDiveCue(T){
 const VIEW_H=420,PSC=1.3,CAM={x:W/2,y:H/2,init:false};
 // phone camera: weight on the ball vs your player, follow speed, aim offset, and how far it may pan past the right/bottom edge
 const CAMW=0.85,CAM_K=0.16,CAM_OX=30,CAM_OY=45,CAM_PR=90,CAM_PB=70;
-function camOn(){return typeof MOB!=='undefined'&&MOB&&document.body.classList.contains('mobplay')}
+function camOn(){return typeof MOB!=='undefined'&&MOB&&(document.body.classList.contains('mobplay')||document.body.classList.contains('mmenu'))}
+// how much of the pitch fits top to bottom: phone menus show a bit more of the live match behind the buttons
+function viewH(){return document.body.classList.contains('mmenu')?(innerHeight>innerWidth?520:470):VIEW_H}
 function camApply(){
   const L=M.local,b=M.ball,c=M.ctrl[L];
-  const z=cv.height/VIEW_H,vw=cv.width/z,vh=VIEW_H;
+  const VHh=viewH(),z=cv.height/VHh,vw=cv.width/z,vh=VHh;
   let tx=b.x*CAMW+(c?c.x:b.x)*(1-CAMW),ty=b.y*CAMW+(c?c.y:b.y)*(1-CAMW);
   if(b.owner&&b.owner.team===L)tx+=dirOf(L)*70; // look ahead when attacking
   tx+=CAM_OX;ty+=CAM_OY;   // keep the ball a little up and left of centre, clear of the thumb buttons
@@ -3097,7 +3151,7 @@ function g3Apply(cam){
   const S=G3.S;let z,tx,ty;
   if(cam){
     const L=M.local,b=M.ball,c=M.ctrl[L];
-    z=cv.height/VIEW_H;const vw=cv.width/z,vh=VIEW_H/S;
+    const VHh=viewH();z=cv.height/VHh;const vw=cv.width/z,vh=VHh/S;
     let x=b.x*CAMW+(c?c.x:b.x)*(1-CAMW),y=b.y*CAMW+(c?c.y:b.y)*(1-CAMW);
     if(b.owner&&b.owner.team===L)x+=dirOf(L)*70;
     x+=CAM_OX;y+=CAM_OY;
@@ -3122,7 +3176,7 @@ function draw(){
   ctx.setTransform(1,0,0,1,0,0);
   const g3=g3Active();
   if(g3)ctx.clearRect(0,0,cv.width,cv.height);else{ctx.fillStyle=g3BgCss();ctx.fillRect(0,0,cv.width,cv.height)}
-  const cam=camOn()&&human;
+  const cam=camOn()&&(human||document.body.classList.contains('mmenu'));
   if(g3)g3Apply(cam);else if(cam)camApply();else ctx.setTransform(scale,0,0,scale,OX*scale,OY*scale);
   draw.m=ctx.getTransform();
   ctx.lineJoin='round';
@@ -3238,7 +3292,7 @@ function draw(){
     // teammates that are off screen get a small arrow at the screen edge, so you know a pass is on
     const m=ctx.getTransform();ctx.setTransform(1,0,0,1,0,0);
     const pad=14*(cv.height/390),k=M.kits[L];
-    for(const e of M.ents){if(e.team!==L||e.gk)continue;
+    if(human)for(const e of M.ents){if(e.team!==L||e.gk)continue;
       const sx=m.a*e.x+m.e,sy=m.d*e.y+m.f;if(sx>0&&sx<cv.width&&sy>0&&sy<cv.height)continue;
       const ex=clamp(sx,pad,cv.width-pad),ey=clamp(sy,pad,cv.height-pad),a=Math.atan2(sy-ey,sx-ex);
       ctx.save();ctx.translate(ex,ey);ctx.rotate(a);ctx.fillStyle=k.main;ctx.strokeStyle='#eef1e8';ctx.lineWidth=2*(cv.height/390);
@@ -3745,7 +3799,7 @@ const ov=$('#overlay');
 function setStage(s){
   stage=s;
   for(const p of ['menuPanel','lobbyPanel','resultPanel','careerPanel'])$('#'+p).hidden=p!==(s==='menu'?'menuPanel':s==='lobby'?'lobbyPanel':s==='result'?'resultPanel':s==='career'?'careerPanel':'');
-  ov.classList.toggle('wide',s==='career');document.body.classList.toggle('incareer',s==='career');
+  ov.classList.toggle('wide',s==='career');document.body.classList.toggle('incareer',s==='career');document.body.classList.toggle('mmenu',typeof MOB!=='undefined'&&MOB&&(s==='menu'||s==='lobby'||s==='result'));
 $('#cutBox').hidden=s!=='cut';if(s!=='match')$('#testSkip').hidden=true;if(s==='cut'){$('#pcards').hidden=true;$('#ctrlbar').hidden=true}
   ov.hidden=s==='match'||s==='cut';
   document.body.classList.toggle('inmatch',s==='match');
@@ -4091,7 +4145,16 @@ if(!MOB){$('#pitchbox').appendChild($('#tut'));$('#pmEnd').appendChild($('#endro
 (function mobile(){
   if(!MOB)return;
   document.body.classList.add('mob');
-  {const f=document.querySelector('footer.foot'),mp=document.getElementById('menuPanel');if(f&&mp){mp.appendChild(f);f.classList.add('infoot')}}   // phones: the about text and copyright sit at the bottom of the main menu
+  // phones: the menu is one full screen (title up top, buttons low down) over the live match; the tip, links, about text
+  // and copyright sit in a footer you scroll down to
+  setTimeout(()=>{const mp=document.getElementById('menuPanel');if(!mp||mp.querySelector('.mscreen'))return;
+    const scr=document.createElement('div');scr.className='mscreen';const hero=document.createElement('div');hero.className='mhero';const btns=document.createElement('div');btns.className='mbtns';
+    const fz=document.createElement('div');fz.className='mfooter';
+    hero.append(...['h1','#menuSub'].map(q=>mp.querySelector(q)).filter(Boolean));
+    btns.append(...['#modeRow','#qpRow','#pvpRow','#joinRow','#diffRow'].map(q=>mp.querySelector(q)).filter(Boolean));
+    const tip=mp.querySelector('.menutip'),mf=mp.querySelector('.menufoot'),f=document.querySelector('footer.foot');
+    if(tip)fz.append(tip);if(mf)fz.append(mf);if(f){f.classList.add('infoot');fz.append(f)}
+    scr.append(hero,btns);mp.prepend(scr);mp.append(fz);document.body.classList.add('mwrap')},0);
   const root=$('#mob');
   root.addEventListener('touchstart',e=>{if(!e.target.closest('#mSheet'))e.preventDefault()},{passive:false});
   root.addEventListener('contextmenu',e=>e.preventDefault());
@@ -5120,7 +5183,8 @@ function onlinePoll(){
 onlinePoll();setInterval(onlinePoll,30000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)onlinePoll()});
 // ---------- version history (newest first; add an entry with every change) ----------
 const VERSIONS=[
- {v:'2.17', d:'Nov 6, 2026', items:['Campaign redesign: a big Next Match card with the club crest, a difficulty meter, rewards and a large Play button','The ten clubs now show as a road of crest tiles (tap one to see it); beaten clubs get a tick, locked ones a padlock','Player cards and packs now use the 3D players; cards are simpler with fewer words','Clearer campaign header: a Main menu button with a house icon, club crest, level badge and coins','Tabs have icons; on phones they sit in a bottom bar (or a side rail when the phone is sideways)','Swapping players and plays now opens a slide-up sheet','Talents page laid out left to right with more room; on phones the selected talent sits at the bottom with its Add point button']},
+ {v:'2.18', d:'Nov 6, 2026', items:['Phone menu redesign: the live match now fills the whole screen behind the menu, with the camera following the ball','Bigger Boot Rivals title with more room around it; buttons sit low on the screen like a game menu','The tip, Contact/Privacy links, version and about text moved into a footer below the menu, well away from the buttons']},
+  {v:'2.17', d:'Nov 6, 2026', items:['Campaign redesign: a big Next Match card with the club crest, a difficulty meter, rewards and a large Play button','The ten clubs now show as a road of crest tiles (tap one to see it); beaten clubs get a tick, locked ones a padlock','Player cards and packs now use the 3D players; cards are simpler with fewer words','Clearer campaign header: a Main menu button with a house icon, club crest, level badge and coins','Tabs have icons; on phones they sit in a bottom bar (or a side rail when the phone is sideways)','Swapping players and plays now opens a slide-up sheet','Talents page laid out left to right with more room; on phones the selected talent sits at the bottom with its Add point button']},
   {v:'2.16', d:'Nov 6, 2026', items:['Phones now pick up the new neon green app icon instead of a saved old copy']},
   {v:'2.15', d:'Nov 6, 2026', items:['Added a Privacy Policy page (bootrivals.com/privacy), linked from the footer and the mobile menu','Added a line saying the game isn\'t affiliated with any real club, league or player']},
   {v:'2.14', d:'Nov 6, 2026', items:['Added a "Buy me a coffee" link to the header (in the ☰ menu on mobile)']},
