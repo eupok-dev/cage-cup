@@ -28,7 +28,7 @@ function gameVersion() { return crypto.createHash('sha1').update(readGame()).dig
 // ---- search engines and link previews ----
 const LANGS = ['en', 'es', 'pt', 'fr', 'de', 'ar'];
 const SEO = {
-  en: ['Boot Rivals – Free 6-a-Side Street Football Game | Play in Your Browser', 'Play Boot Rivals free in your browser: fast 6-a-side street football with a story campaign, skill moves, set plays and online matches against friends. No download needed.'],
+  en: ['Boot Rivals – Free Street Soccer & Football Game | Play Online', 'Play Boot Rivals free in your browser: fast 6-a-side street soccer (football) with a story campaign, skill moves, set plays and online matches against friends. No download needed.'],
   es: ['Boot Rivals – Juego de fútbol callejero 6 contra 6 gratis | Juega en el navegador', 'Juega gratis a Boot Rivals en tu navegador: fútbol callejero 6 contra 6 con campaña, regates, jugadas y partidos online contra amigos. Sin descargas.'],
   pt: ['Boot Rivals – Jogo de futebol de rua 6x6 grátis | Jogue no navegador', 'Jogue Boot Rivals grátis no navegador: futebol de rua 6 contra 6 com campanha, dribles, jogadas ensaiadas e partidas online contra amigos. Sem download.'],
   fr: ['Boot Rivals – Jeu de foot de rue à 6 gratuit | Jouez dans le navigateur', 'Jouez gratuitement à Boot Rivals dans votre navigateur : foot de rue à 6 avec campagne, gestes techniques, combinaisons et matchs en ligne entre amis. Sans téléchargement.'],
@@ -75,7 +75,7 @@ function page(req) {
     '<meta name="theme-color" content="#121318"><meta name="mobile-web-app-capable" content="yes">' +
     '<meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">' +
     '<meta name="apple-mobile-web-app-title" content="Boot Rivals"><link rel="manifest" href="/manifest.webmanifest">' +
-    '<link rel="apple-touch-icon" href="/icon-180.png?v=2"><link rel="icon" type="image/png" sizes="32x32" href="/icon-32.png?v=2"><link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png?v=2">' +
+    '<link rel="apple-touch-icon" href="/icon-180.png?v=2"><link rel="icon" type="image/png" sizes="48x48" href="/icon-48.png?v=2"><link rel="icon" type="image/png" sizes="96x96" href="/icon-96.png?v=2"><link rel="icon" type="image/png" sizes="32x32" href="/icon-32.png?v=2"><link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png?v=2">' +
     '</head><body>' + body + '</body></html>';
 }
 let engineCache = null;
@@ -153,9 +153,9 @@ const server = http.createServer((req, res) => {
   }
   if (req.method === 'GET' && url === '/manifest.webmanifest') { res.writeHead(200, { 'Content-Type': 'application/manifest+json' }); res.end(MANIFEST); return; }
   // default paths some browsers ask for without reading the page
-  const alias = { '/apple-touch-icon.png': '180', '/apple-touch-icon-precomposed.png': '180', '/favicon.ico': '32' }[url.split('?')[0]];
+  const alias = { '/apple-touch-icon.png': '180', '/apple-touch-icon-precomposed.png': '180', '/favicon.ico': '48' }[url.split('?')[0]];
   if (req.method === 'GET' && alias) { try { const buf = fs.readFileSync(path.join(__dirname, `icon-${alias}.png`)); res.writeHead(200, { 'Content-Type': 'image/png', 'Cache-Control': 'max-age=86400' }); res.end(buf); } catch (e) { res.writeHead(404); res.end(); } return; }
-  const ic = req.method === 'GET' && /^\/icon-(32|180|192|512)\.png(\?.*)?$/.exec(url);
+  const ic = req.method === 'GET' && /^\/icon-(32|48|96|180|192|512)\.png(\?.*)?$/.exec(url);
   if (ic) {
     try { const buf = fs.readFileSync(path.join(__dirname, `icon-${ic[1]}.png`)); res.writeHead(200, { 'Content-Type': 'image/png', 'Cache-Control': 'max-age=86400' }); res.end(buf); }
     catch (e) { res.writeHead(404); res.end(); }

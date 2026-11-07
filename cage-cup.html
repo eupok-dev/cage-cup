@@ -1,4 +1,4 @@
-<title>Boot Rivals – Free 6-a-Side Street Football Game</title><meta name="description" content="Play Boot Rivals free in your browser: fast 6-a-side street football with a story campaign, skill moves, set plays and online matches against friends.">
+<title>Boot Rivals – Free Street Soccer &amp; Football Game</title><meta name="description" content="Play Boot Rivals free in your browser: fast 6-a-side street soccer (football) with a story campaign, skill moves, set plays and online matches against friends.">
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&family=Barlow:wght@400;500;600;700&display=swap">
@@ -2472,6 +2472,7 @@ function applyRemoteInput(T,m){
 
 
 
+
 // ---------- local input ----------
 const LI=newInput();
 let mode=null,stage='menu';
@@ -2487,12 +2488,19 @@ let LANG='en';
 try{const s=localStorage.getItem('cagecup.lang');LANG=s||String(navigator.language||'en').slice(0,2).toLowerCase()}catch(e){}
 try{const q=new URLSearchParams(location.search).get('lang');if(q)LANG=q.toLowerCase()}catch(e){}   // links like ?lang=es (used by search engines) open in that language
 if(!LANGS.some(l=>l[0]===LANG))LANG='en';
+// North American (and Australian) English says "soccer": swap the word for those players, everyone else keeps "football"
+const SOCCER=(()=>{try{const ls=[...(navigator.languages||[]),navigator.language||''].map(x=>String(x).toLowerCase());
+  const en=ls.find(x=>x.startsWith('en'));if(!en)return false;if(/^en-(us|ca|au)\b/.test(en))return true;if(/^en-/.test(en))return false;
+  return /^America\/|^Australia\//.test(Intl.DateTimeFormat().resolvedOptions().timeZone||'')}catch(e){return false}})();
+const PLAIN=()=>LANG==='en'&&!SOCCER;   // nothing to change on screen
+const soc=s=>s.replace(/\bfootball(er|ers)?\b/gi,(w,x)=>{const r='soccer'+(x?' player'+(x==='ers'?'s':''):'');return w===w.toUpperCase()?r.toUpperCase():w[0]===w[0].toUpperCase()?r[0].toUpperCase()+r.slice(1):r});
 const I18N={},I18P={},TRC=new Map();
 function i18nBuild(l){if(I18N[l]||!I18N_V[l])return;const D=I18N[l]={},P=I18P[l]=[];
   I18N_K.forEach((k,i)=>{const v=I18N_V[l][i];if(k.includes('{}')){const re=new RegExp('^'+k.replace(/[.*+?^${}()|[\]\\]/g,'\\$&').replace(/\\\{\\\}/g,'(.+?)')+'$');P.push([re,v,k.split('{}').length,k.length])}else D[k]=v});
   P.sort((a,b)=>b[2]-a[2]||b[3]-a[3])}
 function tr(s){
-  if(LANG==='en'||typeof s!=='string'||!s)return s;
+  if(PLAIN()||typeof s!=='string'||!s)return s;
+  if(LANG==='en')return /football/i.test(s)?soc(s):s;
   let r=TRC.get(s);if(r!==undefined)return r;
   const D=I18N[LANG];if(!D)return s;
   const m=/^(\s*)([\s\S]*?)(\s*)$/.exec(s),core=m[2].replace(/\s+/g,' ');let t=D[core];
@@ -2502,18 +2510,18 @@ function tr(s){
   if(TRC.size>4000)TRC.clear();TRC.set(s,r);return r;
 }
 // canvas text goes through the same lookup (pops, banners, cues, painted ground signs)
-{const C2=CanvasRenderingContext2D.prototype;for(const f of['fillText','strokeText','measureText']){const o=C2[f];C2[f]=function(t,...a){return o.call(this,LANG==='en'?t:tr(String(t)),...a)}}}
+{const C2=CanvasRenderingContext2D.prototype;for(const f of['fillText','strokeText','measureText']){const o=C2[f];C2[f]=function(t,...a){return o.call(this,PLAIN()?t:tr(String(t)),...a)}}}
 // page text: translate as it appears, remember the English so switching language (or back) works
 const TRN=new WeakMap(),TRA=new WeakMap(),I18_SKIP='script,style,textarea,#cutText,#errLog,[data-noi18n]',I18_ATTR=['title','aria-label','placeholder'];
 function trText(n){const p=n.parentElement;if(!p||p.closest(I18_SKIP))return;
-  const v=n.nodeValue,rec=TRN.get(n),orig=rec&&rec[1]===v?rec[0]:v;if(!rec&&LANG==='en')return;
+  const v=n.nodeValue,rec=TRN.get(n),orig=rec&&rec[1]===v?rec[0]:v;if(!rec&&PLAIN())return;
   const t=tr(orig);TRN.set(n,[orig,t]);if(t!==v)n.nodeValue=t}
 function trAttr(el,a){if(!el.hasAttribute(a)||el.closest(I18_SKIP))return;let rec=TRA.get(el);if(!rec){rec={};TRA.set(el,rec)}
-  const v=el.getAttribute(a),r=rec[a],orig=r&&r[1]===v?r[0]:v;if(!r&&LANG==='en')return;const t=tr(orig);rec[a]=[orig,t];if(t!==v)el.setAttribute(a,t)}
+  const v=el.getAttribute(a),r=rec[a],orig=r&&r[1]===v?r[0]:v;if(!r&&PLAIN())return;const t=tr(orig);rec[a]=[orig,t];if(t!==v)el.setAttribute(a,t)}
 function trAll(root){if(!root)return;if(root.nodeType===3){trText(root);return}if(root.nodeType!==1)return;
   const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);let n;while((n=w.nextNode()))if(/[A-Za-z]/.test(n.nodeValue)||TRN.has(n))trText(n);
   const els=[root,...root.querySelectorAll('[title],[aria-label],[placeholder]')];for(const el of els)for(const a of I18_ATTR)if(el.hasAttribute&&el.hasAttribute(a))trAttr(el,a)}
-new MutationObserver(ms=>{if(LANG==='en')return;for(const m of ms){
+new MutationObserver(ms=>{if(PLAIN())return;for(const m of ms){
   if(m.type==='characterData')trText(m.target);else if(m.type==='attributes')trAttr(m.target,m.attributeName);else m.addedNodes.forEach(trAll)}})
   .observe(document.body,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:I18_ATTR});
 const RTL_BOX=['#overlay','#setSheet','#pmenu','#mSheet','#cutBox','#tut'];
@@ -5183,7 +5191,8 @@ function onlinePoll(){
 onlinePoll();setInterval(onlinePoll,30000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)onlinePoll()});
 // ---------- version history (newest first; add an entry with every change) ----------
 const VERSIONS=[
- {v:'2.18', d:'Nov 6, 2026', items:['Phone menu redesign: the live match now fills the whole screen behind the menu, with the camera following the ball','Bigger Boot Rivals title with more room around it; buttons sit low on the screen like a game menu','The tip, Contact/Privacy links, version and about text moved into a footer below the menu, well away from the buttons']},
+ {v:'2.19', d:'Nov 6, 2026', items:['Players in the US, Canada and Australia now see "soccer" instead of "football"','Search results now mention both soccer and football','Added 48px and 96px icons so Google can show the site icon in search results']},
+  {v:'2.18', d:'Nov 6, 2026', items:['Phone menu redesign: the live match now fills the whole screen behind the menu, with the camera following the ball','Bigger Boot Rivals title with more room around it; buttons sit low on the screen like a game menu','The tip, Contact/Privacy links, version and about text moved into a footer below the menu, well away from the buttons']},
   {v:'2.17', d:'Nov 6, 2026', items:['Campaign redesign: a big Next Match card with the club crest, a difficulty meter, rewards and a large Play button','The ten clubs now show as a road of crest tiles (tap one to see it); beaten clubs get a tick, locked ones a padlock','Player cards and packs now use the 3D players; cards are simpler with fewer words','Clearer campaign header: a Main menu button with a house icon, club crest, level badge and coins','Tabs have icons; on phones they sit in a bottom bar (or a side rail when the phone is sideways)','Swapping players and plays now opens a slide-up sheet','Talents page laid out left to right with more room; on phones the selected talent sits at the bottom with its Add point button']},
   {v:'2.16', d:'Nov 6, 2026', items:['Phones now pick up the new neon green app icon instead of a saved old copy']},
   {v:'2.15', d:'Nov 6, 2026', items:['Added a Privacy Policy page (bootrivals.com/privacy), linked from the footer and the mobile menu','Added a line saying the game isn\'t affiliated with any real club, league or player']},
